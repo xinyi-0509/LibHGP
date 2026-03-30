@@ -10,6 +10,8 @@ hgp_py.cp312-win_amd64.pyd 位于 vis/ 根目录
 import sys, os
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
+from fastapi import UploadFile, File
+from fastapi import HTTPException
 from fastapi import FastAPI, Response
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
@@ -241,6 +243,35 @@ def convex_hull_3d(req: PointsRequest):
     mesh_id = save_mesh(hull_verts, fi0, fi1, fi2, repair=True)
     return mesh_response(hull_verts, fi0, fi1, fi2, mesh_id)
 
+@app.post("/api/upload_obj")
+async def upload_obj(file: UploadFile = File(...)):
+    """
+    上传 OBJ 文件，解析后存入 mesh_cache，返回 mesh_id + 顶点/面片数据
+    """
+    content = await file.read()
+    text = content.decode("utf-8", errors="ignore")
+
+    # 复用已有的 _load_mesh_from_obj 逻辑，但改成从字符串解析
+    verts, fi0, fi1, fi2 = [], [], [], []
+    for line in text.splitlines():
+        parts = line.split()
+        if not parts:
+            continue
+        if parts[0] == 'v':
+            verts.append([float(parts[1]), float(parts[2]), float(parts[3])])
+        elif parts[0] == 'f':
+            # 处理 f v1/vt1/vn1 格式，只取顶点索引
+            def parse_idx(token):
+                return int(token.split('/')[0]) - 1
+            fi0.append(parse_idx(parts[1]))
+            fi1.append(parse_idx(parts[2]))
+            fi2.append(parse_idx(parts[3]))
+
+    if not verts or not fi0:
+        raise HTTPException(status_code=400, detail="OBJ 文件解析失败或不含三角面片")
+
+    mesh_id = save_mesh(verts, fi0, fi1, fi2, repair=False)
+    return mesh_response(verts, fi0, fi1, fi2, mesh_id)
 # ════════════════════════════════════════════════
 # 接口 2：拉普拉斯平滑
 # ════════════════════════════════════════════════

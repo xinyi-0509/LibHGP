@@ -44,6 +44,14 @@
     <button onclick="runConvexHull3D()">计算并渲染凸包</button>
   </div>
 
+  <!-- 导入 OBJ 文件 -->
+  <div class="section">
+    <h3>📂 导入 OBJ 文件</h3>
+    <input type="file" id="obj-file-input" accept=".obj"
+      style="color:#aaa; font-size:12px; width:100%; margin-top:4px;">
+    <button onclick="uploadOBJ()">导入并渲染</button>
+  </div>
+
   <!-- 算法 2：拉普拉斯平滑 -->
   <div class="section">
     <h3>🌊 拉普拉斯平滑</h3>
@@ -288,7 +296,7 @@ window.runConvexHull3D = async () => {
 
     const geo = buildGeometry(data);
     const mat = new THREE.MeshPhongMaterial({
-      color: 0x7c3aed, transparent: true, opacity: 0.6,
+      color: 0x60a5fa, transparent: true, opacity: 0.6,
       side: THREE.DoubleSide,
     });
     currentMesh = new THREE.Mesh(geo, mat);
@@ -399,6 +407,8 @@ window.runCurvature = async () => {
 // 算法 4：测地线路径（射线拾取起/终点）
 // ════════════════════════════════════════════════
 let pickStep = 0;   // 0=空闲, 1=选起点, 2=选终点
+let sourceMarker = null;
+let targetMarker = null;
 
 window.startGeodesicPick = () => {
   pickStep = 1;
@@ -422,21 +432,55 @@ renderer.domElement.addEventListener('click', (e) => {
   if (!hits.length) return;
 
   const pt = hits[0].point;
+  // ── 新增：把任意点吸附到最近顶点 ──────────────────
+  let closestVert = null;
+  let minDist = Infinity;
+  const posAttr = currentMesh.geometry.attributes.position;
+  for (let i = 0; i < posAttr.count; i++) {
+      const vx = posAttr.getX(i);
+      const vy = posAttr.getY(i);
+      const vz = posAttr.getZ(i);
+      const d = (vx - pt.x) ** 2 + (vy - pt.y) ** 2 + (vz - pt.z) ** 2;
+      if (d < minDist) {
+          minDist = d;
+          closestVert = [vx, vy, vz];
+      }
+  }
+  // ─────────────────────────────────────
   const sphere = new THREE.Mesh(
     new THREE.SphereGeometry(0.05),
     new THREE.MeshBasicMaterial({
       color: pickStep === 1 ? 0x00ff00 : 0xff0000
     })
   );
-  sphere.position.copy(pt);
-  scene.add(sphere);
-
+  // 改后
   if (pickStep === 1) {
-    geodesicSource = [pt.x, pt.y, pt.z];
+    // 移除旧的起点球体
+    if (sourceMarker) scene.remove(sourceMarker);
+    sourceMarker = new THREE.Mesh(
+      new THREE.SphereGeometry(0.05),
+      new THREE.MeshBasicMaterial({ color: 0x00ff00, depthTest: false })
+    );
+    sourceMarker.position.set(closestVert[0], closestVert[1], closestVert[2]);
+    sourceMarker.renderOrder = 999;
+    scene.add(sourceMarker);
+
+    geodesicSource = closestVert;
     pickStep = 2;
     status('请点击网格选择【终点】');
+
   } else {
-    geodesicTarget = [pt.x, pt.y, pt.z];
+    // 移除旧的终点球体
+    if (targetMarker) scene.remove(targetMarker);
+    targetMarker = new THREE.Mesh(
+      new THREE.SphereGeometry(0.05),
+      new THREE.MeshBasicMaterial({ color: 0xff0000, depthTest: false })
+    );
+    targetMarker.position.set(closestVert[0], closestVert[1], closestVert[2]);
+    targetMarker.renderOrder = 999;
+    scene.add(targetMarker);
+
+    geodesicTarget = closestVert;
     pickStep = 0;
     status('起/终点已选定，点击「计算测地路径」');
   }
@@ -828,6 +872,76 @@ window.runPolygonUnion = async () => {
     });
     status(`布尔并集：面积=${data.area.toFixed(4)}，${data.polygons.length} 个多边形`);
   } catch(e) { status('错误：' + e.message); }
+};
+
+window.uploadOBJ = async () => {
+  const fileInput = document.getElementById('obj-file-input');
+  if (!fileInput.files.length) { status('请先选择一个 OBJ 文件'); return; }
+
+  const formData = new FormData();
+  formData.append('file', fileInput.files[0]);
+
+  status('上传并解析中...');
+  try {
+    const res = await fetch(`${API}/upload_obj`, {
+      method: 'POST',
+      body: formData,   // 注意：不要设置 Content-Type，让浏览器自动填 multipart
+    });
+    if (!res.ok) {
+      const err = await res.json();
+      status('错误：' + (err.detail || res.statusText));
+      return;
+    }
+    const data = await res.json();
+    clearScene();
+
+    const geo = buildGeometry(data);
+    const mat = new THREE.MeshPhongMaterial({
+      color: 0x60a5fa, transparent: true, opacity: 0.6,
+      side: THREE.DoubleSide
+    });
+    currentMesh = new THREE.Mesh(geo, mat);
+    scene.add(currentMesh);
+    // mesh 加入场景后，移动相机适配网格大小，不动网格本身
+    const box    = new THREE.Box3().setFromObject(currentMesh);
+    const center = box.getCenter(new THREE.Vector3());
+    const size   = box.getSize(new THREE.Vector3());
+    const maxDim = Math.max(size.x, size.y, size.z);
+
+    camera.position.set(
+      center.x,
+      center.y,
+      center.z + maxDim * 2.5
+    );
+    camera.near = maxDim * 0.001;
+    camera.far  = maxDim * 100;
+    camera.updateProjectionMatrix();
+
+    controls.target.copy(center);  // 旋转中心对准网格中心
+    controls.update();
+    //-----------------------------------------
+    scene.add(new THREE.LineSegments(
+      new THREE.WireframeGeometry(geo),
+      new THREE.LineBasicMaterial({ color: 0x93c5fd, opacity: 0.4, transparent: true })
+    ));
+
+    // 更新 currentMeshData，使后续平滑/曲率等接口可用
+    currentMeshId = data.mesh_id;
+    currentMeshData = {
+      mesh_id:  data.mesh_id,
+      vertices: data.vertices,
+      face_id_0: data.faces.filter((_, i) => i % 3 === 0),
+      face_id_1: data.faces.filter((_, i) => i % 3 === 1),
+      face_id_2: data.faces.filter((_, i) => i % 3 === 2),
+    };
+    currentMeshData.vertices_nested = [];
+    for (let i = 0; i < data.vertices.length; i += 3)
+      currentMeshData.vertices_nested.push([
+        data.vertices[i], data.vertices[i+1], data.vertices[i+2]
+      ]);
+
+    status(`OBJ 导入完成：${data.vertices.length / 3} 顶点，${data.faces.length / 3} 面片`);
+  } catch (e) { status('错误：' + e.message); }
 };
 </script>
 </body>
