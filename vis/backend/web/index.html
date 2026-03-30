@@ -70,12 +70,25 @@
   </div>
 
   <!-- 算法 5：网格切片 -->
+<!-- 算法 5：网格切片 -->
   <div class="section">
     <h3>✂️ 网格切片</h3>
     <label>切片数量：<span id="slice-count-label">5</span></label>
     <input type="range" id="slice-count" min="1" max="20" value="5"
       oninput="document.getElementById('slice-count-label').textContent=this.value">
-    <button onclick="runSlicer()">沿Y轴切片</button>
+    <label style="display:block; margin-top:8px;">切片轴向：</label>
+    <div style="display:flex; gap:8px; margin-top:4px;">
+      <label style="color:#eee; font-size:13px;">
+        <input type="radio" name="slice-axis" value="X"> X轴
+      </label>
+      <label style="color:#eee; font-size:13px;">
+        <input type="radio" name="slice-axis" value="Y" checked> Y轴
+      </label>
+      <label style="color:#eee; font-size:13px;">
+        <input type="radio" name="slice-axis" value="Z"> Z轴
+      </label>
+    </div>
+    <button onclick="runSlicer()">切片</button>
   </div>
 
   <!-- 算法 6：2D 凸包 -->
@@ -470,43 +483,47 @@ window.runGeodesic = async () => {
 // ════════════════════════════════════════════════
 window.runSlicer = async () => {
   if (!currentMeshId) { status('请先加载一个网格'); return; }
-  const n  = parseInt(document.getElementById('slice-count').value);
+  const n = parseInt(document.getElementById('slice-count').value);
 
-  // 根据当前顶点 Y 范围均匀切片
-  const ys   = currentMeshData.vertices_nested.map(v => v[1]);
-  const yMin = Math.min(...ys), yMax = Math.max(...ys);
-  const ds   = Array.from({ length: n }, (_, i) =>
-    -(yMin + (yMax - yMin) * (i + 1) / (n + 1))
+  // 读取选中的轴向
+  const axisVal = document.querySelector('input[name="slice-axis"]:checked').value;
+  // X→0, Y→1, Z→2
+  const axisIdx = { X: 0, Y: 1, Z: 2 }[axisVal];
+  const normal  = [0, 0, 0];
+  normal[axisIdx] = 1;
+
+  // 取该轴的顶点分量范围
+  const vals = currentMeshData.vertices_nested.map(v => v[axisIdx]);
+  const vMin = Math.min(...vals), vMax = Math.max(...vals);
+  // 平面方程 normal·p + d = 0  →  d = -(normal·p) = -coord
+  const ds = Array.from({ length: n }, (_, i) =>
+    -(vMin + (vMax - vMin) * (i + 1) / (n + 1))
   );
 
-  status('切片中...');
+  status(`沿 ${axisVal} 轴切片中...`);
   try {
-    const res  = await fetch(`${API}/slicer`, {
+    const res = await fetch(`${API}/slicer`, {
       method:  'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         mesh_id:      currentMeshId,
-        plane_normal: [0, 1, 0],
+        plane_normal: normal,
         plane_ds:     ds,
       }),
     });
     const data = await res.json();
 
-    const colors = [0xf87171,0xfbbf24,0x34d399,0x60a5fa,0xc084fc];
+    const colors = [0xf87171, 0xfbbf24, 0x34d399, 0x60a5fa, 0xc084fc];
     data.slices.forEach((s, idx) => {
-      const pts = s.contour.map(
-        p => new THREE.Vector3(p[0], p[1], p[2])
-      );
+      const pts = s.contour.map(p => new THREE.Vector3(p[0], p[1], p[2]));
       if (!pts.length) return;
-      pts.push(pts[0]);   // 闭合轮廓
+      pts.push(pts[0]); // 闭合
       scene.add(new THREE.Line(
         new THREE.BufferGeometry().setFromPoints(pts),
-        new THREE.LineBasicMaterial({
-          color: colors[idx % colors.length]
-        })
+        new THREE.LineBasicMaterial({ color: colors[idx % colors.length] })
       ));
     });
-    status(`切片完成：${data.slices.length} 个截面`);
+    status(`${axisVal} 轴切片完成：${data.slices.length} 个截面`);
   } catch(e) { status('错误：' + e.message); }
 };
 
