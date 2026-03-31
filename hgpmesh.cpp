@@ -3191,55 +3191,51 @@ extern "C" LIBHGP_EXPORT void HGP_3D_Convex_Hulls_C1(const Vector3d1 & vec, Vect
 * @ hulls_surface_2: The list of indices for the third vertex of each triangle face.
 * Return: void
 * *********************************************************/
-extern "C" LIBHGP_EXPORT void HGP_3D_Convex_Hulls_C2(const Vector3d1 & vec, Vector3d1 & hull_points, Vector1i1 & hulls_surface_0, Vector1i1 & hulls_surface_1, Vector1i1 & hulls_surface_2)
+extern "C" LIBHGP_EXPORT void HGP_3D_Convex_Hulls_C2(const Vector3d1 & vec,Vector3d1 & hull_points,Vector1i1 & hulls_surface_0,Vector1i1 & hulls_surface_1,Vector1i1 & hulls_surface_2)
 {
-	std::vector<R3> pts, pts2;
-	R3 pt;
-	pts.clear();
+    // 1. 构建 CGAL 点集
+    std::vector<Point_3> points;
+    for (int i = 0; i < (int)vec.size(); i++)
+        points.push_back(Point_3(vec[i][0], vec[i][1], vec[i][2]));
 
-	for (int i = 0; i < vec.size(); i++)
-	{
-		//points.push_back(Point_3(xs[i], ys[i], zs[i]));
-		pt.id = i;
-		pt.r = (float)vec[i][0];
-		pt.c = (float)vec[i][1];
-		pt.z = (float)vec[i][2];
-		pts.push_back(pt);
-	}
+    if (points.size() <= 3)
+    {
+        hull_points = vec;
+        return;
+    }
 
-	std::vector<Tri> tris;
+    // 2. CGAL 计算凸包
+    Polyhedron_3 poly;
+    CGAL::convex_hull_3(points.begin(), points.end(), poly);
 
-	Vector1i1 outx;
-	int nx = de_duplicateR3(pts, outx, pts2);
-	pts.clear();
-	int ts = NewtonApple_hull_3D(pts2, tris);
+    // 3. 导出顶点，建立句柄→索引映射
+    std::map<Polyhedron_3::Vertex_const_handle, int> vertex_index_map;
+    int idx = 0;
+    for (auto vit = poly.vertices_begin();
+         vit != poly.vertices_end(); ++vit, ++idx)
+    {
+        Point_3 p = vit->point();
+        hull_points.push_back(Vector3d(
+            CGAL::to_double(p.x()),
+            CGAL::to_double(p.y()),
+            CGAL::to_double(p.z())
+        ));
+        vertex_index_map[vit] = idx;
+    }
 
-	for (int i = 0; i < (int)tris.size(); i++)
-	{
-		pts.push_back(pts2[tris[i].a]);
-		pts.push_back(pts2[tris[i].b]);
-		pts.push_back(pts2[tris[i].c]);
-	}
-	pts2.clear();
-	outx.clear();
-	tris.clear();
-	nx = de_duplicateR3(pts, outx, pts2);
-	ts = NewtonApple_hull_3D(pts2, tris);
+    // 4. 导出面片索引
+    for (auto fit = poly.facets_begin();
+         fit != poly.facets_end(); ++fit)
+    {
+        auto hc = fit->facet_begin();
+        int a = vertex_index_map[hc->vertex()]; ++hc;
+        int b = vertex_index_map[hc->vertex()]; ++hc;
+        int c = vertex_index_map[hc->vertex()];
 
-
-	for (int i = 0; i < pts2.size(); i++)
-	{
-		hull_points.push_back(Vector3d(pts2[i].r, pts2[i].c, pts2[i].z));
-	}
-
-	for (int i = 0; i < (int)tris.size(); i++)
-	{
-		hulls_surface_0.push_back(tris[i].a);
-		hulls_surface_1.push_back(tris[i].b);
-		hulls_surface_2.push_back(tris[i].c);
-	}
-	pts2.clear();
-
+        hulls_surface_0.push_back(a);
+        hulls_surface_1.push_back(b);
+        hulls_surface_2.push_back(c);
+    }
 }
 /********************************************************
 * Function name: HGP_3D_Convex_Hulls_C3
@@ -3309,68 +3305,69 @@ extern "C" LIBHGP_EXPORT void HGP_3D_Convex_Hulls_C3(const Vector3d1 & vec, Vect
 * @ hulls_surface_1: The list of indices for the second vertex of each triangle face.
 * Return: void
 * *********************************************************/
-extern "C" LIBHGP_EXPORT void HGP_3D_Convex_Hulls_C4(const Vector3d1 & vec, Vector3d1 & hull_points, Vector1i1 & hulls_surface_0, Vector1i1 & hulls_surface_1, Vector1i1 & hulls_surface_2, Vector3d1 & plane_p, Vector3d1 & plane_n)
+extern "C" LIBHGP_EXPORT void HGP_3D_Convex_Hulls_C4(const Vector3d1 & vec,Vector3d1 & hull_points,Vector1i1 & hulls_surface_0,Vector1i1 & hulls_surface_1,Vector1i1 & hulls_surface_2,Vector3d1 & plane_p,Vector3d1 & plane_n)
 {
-	std::vector<R3> pts, pts2;
-	R3 pt;
-	pts.clear();
+    std::vector<Point_3> points;
+    for (int i = 0; i < (int)vec.size(); i++)
+        points.push_back(Point_3(vec[i][0], vec[i][1], vec[i][2]));
 
-	for (int i = 0; i < vec.size(); i++)
-	{
-		//points.push_back(Point_3(xs[i], ys[i], zs[i]));
-		pt.id = i;
-		pt.r = (float)vec[i][0];
-		pt.c = (float)vec[i][1];
-		pt.z = (float)vec[i][2];
-		pts.push_back(pt);
-	}
+    if (points.size() <= 3)
+    {
+        hull_points = vec;
+        return;
+    }
 
-	std::vector<Tri> tris;
+    Polyhedron_3 poly;
+    CGAL::convex_hull_3(points.begin(), points.end(), poly);
 
-	Vector1i1 outx;
-	int nx = de_duplicateR3(pts, outx, pts2);
-	pts.clear();
-	int ts = NewtonApple_hull_3D(pts2, tris);
+    std::map<Polyhedron_3::Vertex_const_handle, int> vertex_index_map;
+    int idx = 0;
+    for (auto vit = poly.vertices_begin();
+         vit != poly.vertices_end(); ++vit, ++idx)
+    {
+        Point_3 p = vit->point();
+        hull_points.push_back(Vector3d(
+            CGAL::to_double(p.x()),
+            CGAL::to_double(p.y()),
+            CGAL::to_double(p.z())
+        ));
+        vertex_index_map[vit] = idx;
+    }
 
-	for (int i = 0; i < (int)tris.size(); i++)
-	{
-		pts.push_back(pts2[tris[i].a]);
-		pts.push_back(pts2[tris[i].b]);
-		pts.push_back(pts2[tris[i].c]);
-	}
-	pts2.clear();
-	outx.clear();
-	tris.clear();
-	nx = de_duplicateR3(pts, outx, pts2);
-	ts = NewtonApple_hull_3D(pts2, tris);
+    for (auto fit = poly.facets_begin();
+         fit != poly.facets_end(); ++fit)
+    {
+        auto hc = fit->facet_begin();
+        int a = vertex_index_map[hc->vertex()]; ++hc;
+        int b = vertex_index_map[hc->vertex()]; ++hc;
+        int c = vertex_index_map[hc->vertex()];
 
+        hulls_surface_0.push_back(a);
+        hulls_surface_1.push_back(b);
+        hulls_surface_2.push_back(c);
 
-	for (int i = 0; i < pts2.size(); i++)
-	{
-		hull_points.push_back(Vector3d(pts2[i].r, pts2[i].c, pts2[i].z));
-	}
+        // 平面参数：从半边直接取顶点坐标
+        auto hc2 = fit->facet_begin();
+        Point_3 pa = hc2->vertex()->point(); ++hc2;
+        Point_3 pb = hc2->vertex()->point(); ++hc2;
+        Point_3 pc = hc2->vertex()->point();
 
-	for (int i = 0; i < (int)tris.size(); i++)
-	{
-		hulls_surface_0.push_back(tris[i].a);
-		hulls_surface_1.push_back(tris[i].b);
-		hulls_surface_2.push_back(tris[i].c);
+        Plane_3 plane(pa, pb, pc);
 
-		Point_3 p_0 = Point_3(pts2[tris[i].a].r, pts2[tris[i].a].c, pts2[tris[i].a].z);
-		Point_3 p_1 = Point_3(pts2[tris[i].b].r, pts2[tris[i].b].c, pts2[tris[i].b].z);
-		Point_3 p_2 = Point_3(pts2[tris[i].c].r, pts2[tris[i].c].c, pts2[tris[i].c].z);
+        Point_3 center(
+            (CGAL::to_double(pa.x()) + CGAL::to_double(pb.x()) + CGAL::to_double(pc.x())) / 3.0,
+            (CGAL::to_double(pa.y()) + CGAL::to_double(pb.y()) + CGAL::to_double(pc.y())) / 3.0,
+            (CGAL::to_double(pa.z()) + CGAL::to_double(pb.z()) + CGAL::to_double(pc.z())) / 3.0
+        );
+        plane_p.push_back(PointVector3d(center));
 
-		Plane_3 plane(p_0, p_1, p_2);
-
-		Point_3 p((p_0[0] + p_1[0] + p_2[0]) / 3.0, (p_0[1] + p_1[1] + p_2[1]) / 3.0, (p_0[2] + p_1[2] + p_2[2]) / 3.0);
-		//Point_3 p = plane.point();
-
-		plane_p.push_back(PointVector3d(p));
-
-		Vector_3 v = plane.orthogonal_vector();
-		plane_n.push_back(Vector3d(v[0], v[1], v[2]));
-	}
-	pts2.clear();
+        Vector_3 n = plane.orthogonal_vector();
+        plane_n.push_back(Vector3d(
+            CGAL::to_double(n.x()),
+            CGAL::to_double(n.y()),
+            CGAL::to_double(n.z())
+        ));
+    }
 }
 
 

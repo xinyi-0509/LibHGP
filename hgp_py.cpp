@@ -67,6 +67,18 @@ static inline VectorPB1 to_pb1(const std::vector<std::pair<bool,bool>>& v) { ret
 PYBIND11_MODULE(hgp_py, m) {
     m.doc() = "pybind11 bindings for libhgp — 完整版";
 
+    //new
+    py::class_<HGPMesh>(m, "HGPMesh")
+    .def(py::init<>())
+    .def_readwrite("verts",      &HGPMesh::verts)
+    .def_readwrite("face_id_0",  &HGPMesh::face_id_0)
+    .def_readwrite("face_id_1",  &HGPMesh::face_id_1)
+    .def_readwrite("face_id_2",  &HGPMesh::face_id_2)
+    .def("to_obj_string",        &HGPMesh::ToOBJString)
+    .def("save_obj",             &HGPMesh::SaveOBJ)
+    .def_static("load_obj",      &HGPMesh::LoadOBJ);
+    //new end
+
     // ════════════════════════════════════════════════════
     // ── IO ───────────────────────────────────────────────
     // ════════════════════════════════════════════════════

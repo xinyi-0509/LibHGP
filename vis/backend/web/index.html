@@ -261,7 +261,6 @@ function applyHeatmapColors(geo, values) {
   geo.setAttribute('color',
     new THREE.Float32BufferAttribute(colors, 3));
 }
-
 // ════════════════════════════════════════════════
 // 全局状态
 // ════════════════════════════════════════════════
@@ -432,55 +431,33 @@ renderer.domElement.addEventListener('click', (e) => {
   if (!hits.length) return;
 
   const pt = hits[0].point;
-  // ── 新增：把任意点吸附到最近顶点 ──────────────────
-  let closestVert = null;
-  let minDist = Infinity;
-  const posAttr = currentMesh.geometry.attributes.position;
-  for (let i = 0; i < posAttr.count; i++) {
-      const vx = posAttr.getX(i);
-      const vy = posAttr.getY(i);
-      const vz = posAttr.getZ(i);
-      const d = (vx - pt.x) ** 2 + (vy - pt.y) ** 2 + (vz - pt.z) ** 2;
-      if (d < minDist) {
-          minDist = d;
-          closestVert = [vx, vy, vz];
-      }
-  }
-  // ─────────────────────────────────────
-  const sphere = new THREE.Mesh(
-    new THREE.SphereGeometry(0.05),
-    new THREE.MeshBasicMaterial({
-      color: pickStep === 1 ? 0x00ff00 : 0xff0000
-    })
-  );
-  // 改后
+  const coord = [pt.x, pt.y, pt.z];
+
   if (pickStep === 1) {
-    // 移除旧的起点球体
     if (sourceMarker) scene.remove(sourceMarker);
     sourceMarker = new THREE.Mesh(
       new THREE.SphereGeometry(0.05),
       new THREE.MeshBasicMaterial({ color: 0x00ff00, depthTest: false })
     );
-    sourceMarker.position.set(closestVert[0], closestVert[1], closestVert[2]);
+    sourceMarker.position.set(pt.x, pt.y, pt.z);
     sourceMarker.renderOrder = 999;
     scene.add(sourceMarker);
 
-    geodesicSource = closestVert;
+    geodesicSource = coord;
     pickStep = 2;
     status('请点击网格选择【终点】');
 
   } else {
-    // 移除旧的终点球体
     if (targetMarker) scene.remove(targetMarker);
     targetMarker = new THREE.Mesh(
       new THREE.SphereGeometry(0.05),
       new THREE.MeshBasicMaterial({ color: 0xff0000, depthTest: false })
     );
-    targetMarker.position.set(closestVert[0], closestVert[1], closestVert[2]);
+    targetMarker.position.set(pt.x, pt.y, pt.z);
     targetMarker.renderOrder = 999;
     scene.add(targetMarker);
 
-    geodesicTarget = closestVert;
+    geodesicTarget = coord;
     pickStep = 0;
     status('起/终点已选定，点击「计算测地路径」');
   }
@@ -491,7 +468,7 @@ window.runGeodesic = async () => {
     status('请先选择起/终点'); return;
   }
   if (!currentMeshId) { status('请先加载一个网格'); return; }
-  status('计算��地路径中...');
+  status('计算测地路径中...');
   try {
     const res  = await fetch(`${API}/geodesic_path`, {
       method:  'POST',
@@ -503,7 +480,10 @@ window.runGeodesic = async () => {
       }),
     });
     const data = await res.json();
-
+    if (!res.ok) {
+      status('错误：' + (data.detail || '测地线计算失败'));
+      return;
+    }
     // 渲染黄色测地路径折线
     const pts = data.path.map(p => new THREE.Vector3(p[0], p[1], p[2]));
     scene.add(new THREE.Line(
@@ -538,10 +518,12 @@ window.runSlicer = async () => {
 
   // 取该轴的顶点分量范围
   const vals = currentMeshData.vertices_nested.map(v => v[axisIdx]);
+  console.log('vertices_nested长度:', currentMeshData.vertices_nested.length);
+  console.log('vertices长度:', currentMeshData.vertices.length);
   const vMin = Math.min(...vals), vMax = Math.max(...vals);
   // 平面方程 normal·p + d = 0  →  d = -(normal·p) = -coord
   const ds = Array.from({ length: n }, (_, i) =>
-    -(vMin + (vMax - vMin) * (i + 1) / (n + 1))
+    (vMin + (vMax - vMin) * (i + 1) / (n + 1))
   );
 
   status(`沿 ${axisVal} 轴切片中...`);
@@ -556,16 +538,23 @@ window.runSlicer = async () => {
       }),
     });
     const data = await res.json();
-
+    //console.log('切片返回数据:', JSON.stringify(data.slices[0]));
     const colors = [0xf87171, 0xfbbf24, 0x34d399, 0x60a5fa, 0xc084fc];
     data.slices.forEach((s, idx) => {
-      const pts = s.contour.map(p => new THREE.Vector3(p[0], p[1], p[2]));
-      if (!pts.length) return;
-      pts.push(pts[0]); // 闭合
-      scene.add(new THREE.Line(
-        new THREE.BufferGeometry().setFromPoints(pts),
-        new THREE.LineBasicMaterial({ color: colors[idx % colors.length] })
-      ));
+      const color = colors[idx % colors.length];
+      s.contours.forEach(contour => {
+          const pts = contour.map(p => new THREE.Vector3(p[0], p[1], p[2]));
+          if (!pts.length) return;
+
+          // 首尾距离足够近才闭合（凸包自动闭合，复杂非凸模型保持开放）
+          if (pts[0].distanceTo(pts[pts.length - 1]) < 0.2) {
+              pts.push(pts[0]);
+          }
+          scene.add(new THREE.Line(
+              new THREE.BufferGeometry().setFromPoints(pts),
+              new THREE.LineBasicMaterial({ color })
+          ));
+      });
     });
     status(`${axisVal} 轴切片完成：${data.slices.length} 个截面`);
   } catch(e) { status('错误：' + e.message); }

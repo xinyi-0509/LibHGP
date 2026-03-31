@@ -103,6 +103,7 @@ def repair_mesh(vertices, fi0, fi1, fi2):
     2. 删除退化面片（含重复顶点索引的面片）
     3. 删除重复面片
     4. 统一面片法向（修复半边方向冲突）
+    5. 删除非流形边的多余面片
     返回修复后的 (vertices, fi0, fi1, fi2)
     """
     EPS = 1e-8
@@ -188,7 +189,117 @@ def repair_mesh(vertices, fi0, fi1, fi2):
           f"修复后：{len(unique_verts)} 顶点 "
           f"{len(fixed_fi0)} 面片")
 
-    return unique_verts, fixed_fi0, fixed_fi1, fixed_fi2
+    # ── 步骤5：检测并删除导致非流形顶点的面片 ──────
+    # 非流形顶点：顶点周围的面片不构成单一连通扇形
+    # 检测方法：对每个顶点，检查其相邻面片是否构成连通扇
+    from collections import defaultdict
+
+    # 建立顶点 → 相邻面片列表
+    vert_to_faces = defaultdict(list)
+    for idx, (a, b, c) in enumerate(
+            zip(fixed_fi0, fixed_fi1, fixed_fi2)):
+        vert_to_faces[a].append(idx)
+        vert_to_faces[b].append(idx)
+        vert_to_faces[c].append(idx)
+
+    # 建立边 → 面片列表（无向边）
+    edge_to_faces = defaultdict(list)
+    for idx, (a, b, c) in enumerate(
+            zip(fixed_fi0, fixed_fi1, fixed_fi2)):
+        edge_to_faces[tuple(sorted([a, b]))].append(idx)
+        edge_to_faces[tuple(sorted([b, c]))].append(idx)
+        edge_to_faces[tuple(sorted([a, c]))].append(idx)
+
+    # 找非流形边（被3个以上面片共享）→ 标记这些面片为待删除
+    bad_faces = set()
+    for edge, faces in edge_to_faces.items():
+        if len(faces) > 2:
+            # 保留前两个，删除多余的
+            for f in faces[2:]:
+                bad_faces.add(f)
+
+    manifold_fi0, manifold_fi1, manifold_fi2 = [], [], []
+    for idx, (a, b, c) in enumerate(
+            zip(fixed_fi0, fixed_fi1, fixed_fi2)):
+        if idx not in bad_faces:
+            manifold_fi0.append(a)
+            manifold_fi1.append(b)
+            manifold_fi2.append(c)
+
+    print(f"[repair_mesh] "
+          f"原始：{len(vertices)} 顶点 {len(fi0)} 面片 → "
+          f"流形修复后：{len(unique_verts)} 顶点 "
+          f"{len(manifold_fi0)} 面片"
+          f"（删除非流形面片 {len(bad_faces)} 个）")
+
+    # ── 步骤6：检测并消除蝴蝶结顶点（顶点级非流形）──
+    # 对每个顶点，检查其相邻面片是否构成单一连通扇形。
+    # 方法：把顶点周围的边构成图，用 BFS 判断连通分量数。
+    # 若有 2+ 个连通分量，只保留最大的那个分量的面片。
+    def get_fan_components(v, face_indices, fi0, fi1, fi2):
+        if not face_indices:
+            return []
+        neighbor_vert_to_faces = defaultdict(list)
+        for f in face_indices:
+            a, b, c = fi0[f], fi1[f], fi2[f]
+            for u in (a, b, c):
+                if u != v:
+                    neighbor_vert_to_faces[u].append(f)
+        adj = defaultdict(set)
+        for u, fs in neighbor_vert_to_faces.items():
+            if len(fs) == 2:
+                adj[fs[0]].add(fs[1])
+                adj[fs[1]].add(fs[0])
+        visited = set()
+        components = []
+        for start in face_indices:
+            if start in visited:
+                continue
+            comp = set()
+            queue = [start]
+            while queue:
+                cur = queue.pop()
+                if cur in visited:
+                    continue
+                visited.add(cur)
+                comp.add(cur)
+                for nb in adj[cur]:
+                    if nb not in visited:
+                        queue.append(nb)
+            components.append(comp)
+        return components
+
+    vert_to_faces = defaultdict(list)
+    for idx, (a, b, c) in enumerate(zip(manifold_fi0, manifold_fi1, manifold_fi2)):
+        vert_to_faces[a].append(idx)
+        vert_to_faces[b].append(idx)
+        vert_to_faces[c].append(idx)
+
+    bowtie_bad = set()
+    for v, face_indices in vert_to_faces.items():
+        comps = get_fan_components(v, face_indices,
+                                   manifold_fi0, manifold_fi1, manifold_fi2)
+        if len(comps) > 1:
+            largest = max(comps, key=len)
+            for comp in comps:
+                if comp is not largest:
+                    bowtie_bad |= comp
+
+    final_fi0, final_fi1, final_fi2 = [], [], []
+    for idx, (a, b, c) in enumerate(zip(manifold_fi0, manifold_fi1, manifold_fi2)):
+        if idx not in bowtie_bad:
+            final_fi0.append(a)
+            final_fi1.append(b)
+            final_fi2.append(c)
+
+    print(f"[repair_mesh] "
+          f"原始：{len(vertices)} 顶点 {len(fi0)} 面片 → "
+          f"流形修复后：{len(unique_verts)} 顶点 "
+          f"{len(final_fi0)} 面片 "
+          f"（非流形边删除 {len(bad_faces)} 个面片，"
+          f"蝴蝶结删除 {len(bowtie_bad)} 个面片）")
+
+    return unique_verts, final_fi0, final_fi1, final_fi2
 
 
 # ── 修复1：save_mesh 同时写 OFF 文件（供 CGAL slicer 读取）──
@@ -223,12 +334,11 @@ def save_mesh(vertices, fi0, fi1, fi2, repair: bool = False) -> str:
 
 
 def get_mesh_path(mesh_id: str, ext: str = "obj") -> str:
-    """ext: 'obj' 或 'off'"""
     path = os.path.join(MESH_DIR, f"{mesh_id}.{ext}")
     if not os.path.exists(path):
-        raise FileNotFoundError(
-            f"mesh_id={mesh_id} 对应的 .{ext} 缓存文件不存在，"
-            "请先调用凸包或平滑接口生成网格"    
+        raise HTTPException(
+            status_code=404,
+            detail=f"mesh_id={mesh_id} 对应的 .{ext} 文件不存在"
         )
     return path
 
@@ -236,11 +346,17 @@ def get_mesh_path(mesh_id: str, ext: str = "obj") -> str:
 # 接口 1：3D 凸包
 # ═════════════════════════════════���══════════════
 
+#@app.post("/api/convex_hull_3d")
+#def convex_hull_3d(req: PointsRequest):
+#    hull_verts, fi0, fi1, fi2 = hgp_py.HGP_3D_Convex_Hulls_C2(req.points)
+#    # repair=True：凸包输出可能含重复顶点和方向冲突，需要修复
+#    mesh_id = save_mesh(hull_verts, fi0, fi1, fi2, repair=True)
+#    return mesh_response(hull_verts, fi0, fi1, fi2, mesh_id)
 @app.post("/api/convex_hull_3d")
 def convex_hull_3d(req: PointsRequest):
     hull_verts, fi0, fi1, fi2 = hgp_py.HGP_3D_Convex_Hulls_C2(req.points)
-    # repair=True：凸包输出可能含重复顶点和方向冲突，需要修复
-    mesh_id = save_mesh(hull_verts, fi0, fi1, fi2, repair=True)
+    # CGAL 已保证完整封闭，repair=False 即可
+    mesh_id = save_mesh(hull_verts, fi0, fi1, fi2, repair=False)
     return mesh_response(hull_verts, fi0, fi1, fi2, mesh_id)
 
 @app.post("/api/upload_obj")
@@ -270,7 +386,7 @@ async def upload_obj(file: UploadFile = File(...)):
     if not verts or not fi0:
         raise HTTPException(status_code=400, detail="OBJ 文件解析失败或不含三角面片")
 
-    mesh_id = save_mesh(verts, fi0, fi1, fi2, repair=False)
+    mesh_id = save_mesh(verts, fi0, fi1, fi2, repair=True)
     return mesh_response(verts, fi0, fi1, fi2, mesh_id)
 # ════════════════════════════════════════════════
 # 接口 2：拉普拉斯平滑
@@ -314,10 +430,24 @@ def geodesic_path(req: GeodesicRequest):
     path_points = hgp_py.HGP_Shortest_Geodesic_Path_C3(
         mesh_path, req.source, req.target
     )
-    # 同时计算距离数值（调用独立的 HGP_Geodesic_Distance）
+
+    # 返回空路径或单点时，说明两点不连通
+    if len(path_points) < 2:
+        raise HTTPException(
+            status_code=422,
+            detail="两点不连通：source 和 target 必须在同一连通网格上。"
+                   "该模型可能是多部件拼合，请选择同一部件上的两点。"
+        )
+
     dist = hgp_py.HGP_Geodesic_Distance(
         mesh_path, req.source, req.target
     )
+    # 距离为负也说明失败
+    if dist < 0:
+        raise HTTPException(
+            status_code=422,
+            detail="测地线计算失败：两点不在同一连通网格上。"
+        )
     return {
         "path":     [[p[0], p[1], p[2]] for p in path_points],
         "distance": dist,
@@ -326,18 +456,25 @@ def geodesic_path(req: GeodesicRequest):
 # ════════════════════════════════════════════════
 # 接口 5：网格切片
 # ════════════════════════════════════════════════
-
 # ── 修复2：slicer 使用 .off 文件 ──
 @app.post("/api/slicer")
 def slicer(req: SlicerRequest):
-    mesh_path          = get_mesh_path(req.mesh_id, ext="off")   # ← 改为 off
+    mesh_path = get_mesh_path(req.mesh_id, ext="off")
     offsetses, offsets = hgp_py.HGP_Slicer_Mesh(
         mesh_path, req.plane_normal, req.plane_ds
     )
+    print(f"plane_ds: {req.plane_ds}")
+    print(f"offsetses 长度: {len(offsetses)}, 各平面段数: {[len(p) for p in offsetses]}")
+    print(f"offsets 长度: {len(offsets)}")
     return {
         "slices": [
-            {"contour": [[p[0], p[1], p[2]] for p in contour]}
-            for contour in offsets
+            {
+                "contours": [
+                    [[p[0], p[1], p[2]] for p in seg]
+                    for seg in plane_contours
+                ]
+            }
+            for plane_contours in offsetses
         ]
     }
 
@@ -607,3 +744,31 @@ def _load_mesh_from_obj(path: str):
                 fi1.append(int(parts[2]) - 1)
                 fi2.append(int(parts[3]) - 1)
     return verts, fi0, fi1, fi2
+# ════════════════════════════════════════════════
+#接收 OBJ 字符串直接渲染，不需要文件上传
+# ════════════════════════════════════════════════
+def parse_obj_string(obj_str: str):
+    verts, fi0, fi1, fi2 = [], [], [], []
+    for line in obj_str.splitlines():
+        parts = line.split()
+        if not parts:
+            continue
+        if parts[0] == 'v' and len(parts) >= 4:
+            verts.append([float(parts[1]), float(parts[2]), float(parts[3])])
+        elif parts[0] == 'f' and len(parts) >= 4:
+            def parse_idx(token):
+                return int(token.split('/')[0]) - 1
+            fi0.append(parse_idx(parts[1]))
+            fi1.append(parse_idx(parts[2]))
+            fi2.append(parse_idx(parts[3]))
+    return verts, fi0, fi1, fi2
+
+class VisRequest(BaseModel):
+    obj_string: str        # OBJ 文件内容
+    label: str = ""        # 可选标签
+
+@app.post("/api/visualize")
+def visualize(req: VisRequest):
+    verts, fi0, fi1, fi2 = parse_obj_string(req.obj_string)
+    mesh_id = save_mesh(verts, fi0, fi1, fi2, repair=False)
+    return mesh_response(verts, fi0, fi1, fi2, mesh_id)

@@ -200,6 +200,7 @@ public:
 			B.add_vertex_to_facet(tris[i + 2]);
 			B.end_facet();
 		}
+		 B.end_surface(); //add
 	}
 };
 
