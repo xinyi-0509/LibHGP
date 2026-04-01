@@ -18,9 +18,15 @@
       background: #7c3aed; color: white; border: none;
       border-radius: 4px; cursor: pointer; font-size: 13px;
     }
-    button:hover { background: #6d28d9; }
+    button:hover  { background: #6d28d9; }
     button:disabled { background: #4b5563; cursor: not-allowed; }
+    button.active { background: #b45309; }
     input[type=range] { width: 100%; margin-top: 4px; }
+    input[type=number] {
+      width: 100%; padding: 4px 6px; margin-top: 4px;
+      background: #2d2d4e; color: #eee; border: 1px solid #555;
+      border-radius: 4px; font-size: 12px; box-sizing: border-box;
+    }
     label { font-size: 12px; color: #aaa; }
     #status {
       position: absolute; bottom: 10px; left: 10px;
@@ -31,11 +37,21 @@
 </head>
 <body>
 
-<!-- 侧边栏：算法控制面板 -->
+<!-- ══════════════════════════════════════════════
+     侧边栏
+══════════════════════════════════════════════ -->
 <div id="sidebar">
   <h2 style="color:#a78bfa; margin-top:0">LibHGP 算法库</h2>
 
-  <!-- 算法 1：3D 凸包 -->
+  <!-- ── 导入 OBJ 文件 ── -->
+  <div class="section">
+    <h3>📂 导入 OBJ 文件</h3>
+    <input type="file" id="obj-file-input" accept=".obj"
+      style="color:#aaa; font-size:12px; width:100%; margin-top:4px;">
+    <button onclick="uploadOBJ()">导入并渲染</button>
+  </div>
+
+  <!-- ── 1：3D 凸包 ── -->
   <div class="section">
     <h3>🔷 3D 凸包</h3>
     <label>随机点数量：<span id="pt-count-label">30</span></label>
@@ -44,15 +60,7 @@
     <button onclick="runConvexHull3D()">计算并渲染凸包</button>
   </div>
 
-  <!-- 导入 OBJ 文件 -->
-  <div class="section">
-    <h3>📂 导入 OBJ 文件</h3>
-    <input type="file" id="obj-file-input" accept=".obj"
-      style="color:#aaa; font-size:12px; width:100%; margin-top:4px;">
-    <button onclick="uploadOBJ()">导入并渲染</button>
-  </div>
-
-  <!-- 算法 2：拉普拉斯平滑 -->
+  <!-- ── 2：拉普拉斯平滑 ── -->
   <div class="section">
     <h3>🌊 拉普拉斯平滑</h3>
     <label>迭代次数：<span id="smooth-iter-label">5</span></label>
@@ -61,24 +69,30 @@
     <button onclick="runSmooth()">平滑当前网格</button>
   </div>
 
-  <!-- 算法 3：网格曲率（热力图） -->
+  <!-- ── 3：Loop 细分 ── -->
+  <div class="section">
+    <h3>🔺 Loop 细分</h3>
+    <label>每次点击细分一步（面片数 ×4）</label>
+    <button onclick="runSubdivide()">细分一步</button>
+  </div>
+
+  <!-- ── 4：曲率热力图 ── -->
   <div class="section">
     <h3>🌡️ 曲率热力图</h3>
     <button onclick="runCurvature()">计算曲率着色</button>
   </div>
 
-  <!-- 算法 4：最短测地路径 + 距离 -->
+  <!-- ── 5：最短测地路径 & 距离 ── -->
   <div class="section">
     <h3>📏 最短测地路径 & 距离</h3>
     <label>点击网格选择起点/终点</label>
-    <button onclick="startGeodesicPick()">选择起/终点</button>
+    <button id="btn-geodesic-pick" onclick="startGeodesicPick()">选择起/终点</button>
     <button onclick="runGeodesic()">计算路径 & 距离</button>
     <div id="geodesic-result"
          style="margin-top:8px; font-size:12px; color:#6ee7b7; min-height:16px;"></div>
   </div>
 
-  <!-- 算法 5：网格切片 -->
-<!-- 算法 5：网格切片 -->
+  <!-- ── 6：网格切片 ── -->
   <div class="section">
     <h3>✂️ 网格切片</h3>
     <label>切片数量：<span id="slice-count-label">5</span></label>
@@ -86,70 +100,53 @@
       oninput="document.getElementById('slice-count-label').textContent=this.value">
     <label style="display:block; margin-top:8px;">切片轴向：</label>
     <div style="display:flex; gap:8px; margin-top:4px;">
-      <label style="color:#eee; font-size:13px;">
-        <input type="radio" name="slice-axis" value="X"> X轴
-      </label>
-      <label style="color:#eee; font-size:13px;">
-        <input type="radio" name="slice-axis" value="Y" checked> Y轴
-      </label>
-      <label style="color:#eee; font-size:13px;">
-        <input type="radio" name="slice-axis" value="Z"> Z轴
-      </label>
+      <label style="color:#eee; font-size:13px;"><input type="radio" name="slice-axis" value="X"> X轴</label>
+      <label style="color:#eee; font-size:13px;"><input type="radio" name="slice-axis" value="Y" checked> Y轴</label>
+      <label style="color:#eee; font-size:13px;"><input type="radio" name="slice-axis" value="Z"> Z轴</label>
     </div>
     <button onclick="runSlicer()">切片</button>
   </div>
 
-  <!-- 算法 6：2D 凸包 -->
-  <div class="section">
-    <h3>⬟ 2D 凸包</h3>
-    <label>在下方 XY 平面点击添加点</label>
-    <button onclick="enable2DMode()">进入 2D 模式</button>
-    <button onclick="run2DConvexHull()">计算 2D 凸包</button>
-    <button onclick="clear2D()">清空</button>
-  </div>
-
-    <!-- 算法 7：网格边界提取 -->
+  <!-- ── 7：网格边界 ── -->
   <div class="section">
     <h3>🔲 网格边界</h3>
     <button onclick="runMeshBoundary()">提取并渲染边界</button>
   </div>
 
-  <!-- 算法 8：顶点法向量 -->
+  <!-- ── 8：顶点法向量 ── -->
   <div class="section">
     <h3>➡️ 顶点法向量</h3>
     <label>箭头长度：<span id="normal-len-label">0.1</span></label>
-    <input type="range" id="normal-len" min="0.02" max="0.5"
-           step="0.01" value="0.1"
-      oninput="document.getElementById('normal-len-label').textContent=
-               parseFloat(this.value).toFixed(2)">
+    <input type="range" id="normal-len" min="0.02" max="0.5" step="0.01" value="0.1"
+      oninput="document.getElementById('normal-len-label').textContent=parseFloat(this.value).toFixed(2)">
     <button onclick="runMeshNormals()">渲染法向量箭头</button>
   </div>
 
-  <!-- 算法 9：包围盒 -->
+  <!-- ── 9：包围盒 ── -->
   <div class="section">
     <h3>📦 包围盒</h3>
     <button onclick="runMeshBBox()">显示包围盒</button>
   </div>
 
-  <!-- 算法 10：表面采样 -->
+  <!-- ── 10：表面采样 ── -->
   <div class="section">
     <h3>🔵 表面采样</h3>
     <label>采样密度：<span id="sample-density-label">0.05</span></label>
-    <input type="range" id="sample-density" min="0.01" max="0.2"
-           step="0.01" value="0.05"
-      oninput="document.getElementById('sample-density-label').textContent=
-               parseFloat(this.value).toFixed(2)">
+    <input type="range" id="sample-density" min="0.01" max="0.2" step="0.01" value="0.05"
+      oninput="document.getElementById('sample-density-label').textContent=parseFloat(this.value).toFixed(2)">
     <button onclick="runMeshSampling()">采样并渲染点云</button>
   </div>
 
-  <!-- 算法 11：Loop 细分 -->
+  <!-- ── 11：2D 凸包 ── -->
   <div class="section">
-    <h3>🔺 Loop 细分</h3>
-    <label>每次点击细分一步（面片数 ×4）</label>
-    <button onclick="runSubdivide()">细分一步</button>
+    <h3>⬟ 2D 凸包</h3>
+    <label>在画布 XY 平面点击添加点</label>
+    <button onclick="enable2DMode()">进入 2D 模式</button>
+    <button onclick="run2DConvexHull()">计算 2D 凸包</button>
+    <button onclick="clear2D()">清空</button>
   </div>
 
-  <!-- 算法 12：2D 布尔并集 -->
+  <!-- ── 12：2D 布尔并集 ── -->
   <div class="section">
     <h3>⊕ 2D 多边形并集</h3>
     <label>先用 2D 模式各画一个多边形</label>
@@ -158,8 +155,22 @@
     <button onclick="runPolygonUnion()">计算布尔并集</button>
     <button onclick="clearUnion()">清空</button>
   </div>
-</div>
 
+  <!-- ── 13：CSG 打孔 ── -->
+  <div class="section">
+    <h3>🕳️ CSG 打孔</h3>
+    <label>半径：</label>
+    <input type="number" id="hole-radius" value="0.15" min="0.01" step="0.01">
+    <label style="margin-top:6px;">深度：</label>
+    <input type="number" id="hole-depth"  value="1.0"  min="0.01" step="0.05">
+    <button id="btn-hole-pick" onclick="startHolePick()">① 点击网格选择圆心</button>
+    <button onclick="runCSGHole()">② 执行打孔</button>
+    <button onclick="undoCSGHole()" style="background:#374151;">↩ 撤销（恢复上一步）</button>
+    <div id="hole-result"
+         style="margin-top:8px; font-size:12px; color:#fca5a5; min-height:16px;"></div>
+  </div>
+
+</div>
 
 <!-- Three.js 画布 -->
 <div id="canvas-container">
@@ -179,12 +190,14 @@
 import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 
-// ── 全局 API 地址 ──────────────────────────────
+// ════════════════════════════════════════════════
+// 常量
+// ════════════════════════════════════════════════
 const API = 'http://localhost:8000/api';
 
 // ════════════════════════════════════════════════
 // Three.js 场景初始化
-// ════════════════════════════════════════════════
+// ���═══════════════════════════════════════════════
 const container = document.getElementById('canvas-container');
 const renderer  = new THREE.WebGLRenderer({ antialias: true });
 renderer.setPixelRatio(devicePixelRatio);
@@ -200,13 +213,11 @@ dirLight.position.set(5, 10, 7);
 scene.add(dirLight);
 
 const camera = new THREE.PerspectiveCamera(
-  45, container.clientWidth / container.clientHeight, 0.01, 1000
-);
+  45, container.clientWidth / container.clientHeight, 0.01, 1000);
 camera.position.set(0, 0, 5);
 
 const controls = new OrbitControls(camera, renderer.domElement);
 controls.enableDamping = true;
-
 scene.add(new THREE.AxesHelper(2));
 
 window.addEventListener('resize', () => {
@@ -215,62 +226,221 @@ window.addEventListener('resize', () => {
   renderer.setSize(container.clientWidth, container.clientHeight);
 });
 
-function animate() {
-  requestAnimationFrame(animate);
-  controls.update();
-  renderer.render(scene, camera);
-}
+function animate() { requestAnimationFrame(animate); controls.update(); renderer.render(scene, camera); }
 animate();
 
 // ════════════════════════════════════════════════
 // 工具函数
 // ════════════════════════════════════════════════
 
-const status = (msg) =>
-  document.getElementById('status').textContent = msg;
+const status = (msg) => document.getElementById('status').textContent = msg;
 
-// 清除场景中的几何对象（保留灯光/坐标轴）
 function clearScene() {
   scene.children
     .filter(o => o.isMesh || o.isLine || o.isPoints || o.isLineSegments)
     .forEach(o => { scene.remove(o); o.geometry.dispose(); });
 }
 
-// 从 API 返回的 {vertices:[...], faces:[...]} 构建 BufferGeometry
 function buildGeometry(data) {
   const geo = new THREE.BufferGeometry();
-  geo.setAttribute('position',
-    new THREE.Float32BufferAttribute(data.vertices, 3));
-  if (data.faces && data.faces.length > 0)
-    geo.setIndex(data.faces);
+  geo.setAttribute('position', new THREE.Float32BufferAttribute(data.vertices, 3));
+  if (data.faces && data.faces.length > 0) geo.setIndex(data.faces);
   geo.computeVertexNormals();
   return geo;
 }
 
-// 热力图着色（蓝→绿→红）
 function applyHeatmapColors(geo, values) {
   const min = Math.min(...values), max = Math.max(...values);
   const colors = [];
   for (const v of values) {
     const t = (v - min) / (max - min + 1e-9);
-    const r = Math.min(1, t * 2);
-    const g = t < 0.5 ? t * 2 : (1 - t) * 2;
-    const b = Math.max(0, 1 - t * 2);
-    colors.push(r, g, b);
+    colors.push(Math.min(1, t*2), t < 0.5 ? t*2 : (1-t)*2, Math.max(0, 1-t*2));
   }
-  geo.setAttribute('color',
-    new THREE.Float32BufferAttribute(colors, 3));
+  geo.setAttribute('color', new THREE.Float32BufferAttribute(colors, 3));
 }
+
+/** 从 API 返回的 data 刷新主体网格（主颜色可选） */
+function applyMeshData(data, color = 0x60a5fa) {
+  clearScene();
+  const geo = buildGeometry(data);
+  currentMesh = new THREE.Mesh(geo,
+    new THREE.MeshPhongMaterial({ color, side: THREE.DoubleSide }));
+  scene.add(currentMesh);
+  scene.add(new THREE.LineSegments(
+    new THREE.WireframeGeometry(geo),
+    new THREE.LineBasicMaterial({ color: 0xa78bfa, opacity: 0.3, transparent: true })));
+
+  currentMeshId = data.mesh_id;
+  currentMeshData = {
+    vertices:  data.vertices,
+    face_id_0: data.faces.filter((_, i) => i % 3 === 0),
+    face_id_1: data.faces.filter((_, i) => i % 3 === 1),
+    face_id_2: data.faces.filter((_, i) => i % 3 === 2),
+    vertices_nested: [],
+  };
+  for (let i = 0; i < data.vertices.length; i += 3)
+    currentMeshData.vertices_nested.push(
+      [data.vertices[i], data.vertices[i+1], data.vertices[i+2]]);
+}
+
 // ════════════════════════════════════════════════
 // 全局状态
 // ════════════════════════════════════════════════
-let currentMesh     = null;   // 当前 Three.js Mesh 对象
-let currentMeshData = null;   // 当前网格原始数据
-let currentMeshId   = null;   // 服务端 mesh_id（替代硬编码路径）
-let geodesicSource  = null;
-let geodesicTarget  = null;
-let points2D        = [];
-let mode2D          = false;
+let currentMesh     = null;
+let currentMeshData = null;
+let currentMeshId   = null;
+
+// 测地线拾取
+let geodesicSource = null;
+let geodesicTarget = null;
+let sourceMarker   = null;
+let targetMarker   = null;
+
+// 打孔拾取
+let holePick        = null;   // { center:[x,y,z], normal:[nx,ny,nz] }
+let holePreviewMesh = null;
+let prevMeshId      = null;   // 打孔前的 mesh_id，用于撤销
+
+// 2D 模式
+let points2D = [];
+let mode2D   = false;
+let unionMode  = 0;
+let unionPoly0 = [];
+let unionPoly1 = [];
+
+// 统一拾取状态机
+// 0=空闲, 1=测地起点, 2=测地终点, 3=打孔圆心
+let pickStep = 0;
+
+const raycaster = new THREE.Raycaster();
+const mouse     = new THREE.Vector2();
+
+// ════════════════════════════════════════════════
+// 统一鼠标点击处理（所有拾取模式共用一个监听器）
+// ════════════════════════════════════════════════
+renderer.domElement.addEventListener('click', (e) => {
+  const rect = renderer.domElement.getBoundingClientRect();
+  mouse.x = ((e.clientX - rect.left) / rect.width)  *  2 - 1;
+  mouse.y = ((e.clientY - rect.top)  / rect.height) * -2 + 1;
+
+  // ── 2D 点收集（优先处理）────────────────────
+  if (unionMode !== 0) {
+    const vec = new THREE.Vector3(mouse.x, mouse.y, 0.5).unproject(camera);
+    const dir = vec.sub(camera.position).normalize();
+    const t   = -camera.position.z / dir.z;
+    const pos = camera.position.clone().add(dir.multiplyScalar(t));
+    const color = unionMode === 1 ? 0xf87171 : 0x60a5fa;
+    if (unionMode === 1) unionPoly0.push([pos.x, pos.y]);
+    else                 unionPoly1.push([pos.x, pos.y]);
+    const dot = new THREE.Mesh(new THREE.SphereGeometry(0.05),
+      new THREE.MeshBasicMaterial({ color }));
+    dot.position.set(pos.x, pos.y, 0);
+    scene.add(dot);
+    return;
+  }
+
+  if (mode2D) {
+    const vec = new THREE.Vector3(mouse.x, mouse.y, 0.5).unproject(camera);
+    const dir = vec.sub(camera.position).normalize();
+    const t   = -camera.position.z / dir.z;
+    const pos = camera.position.clone().add(dir.multiplyScalar(t));
+    points2D.push([pos.x, pos.y]);
+    const dot = new THREE.Mesh(new THREE.SphereGeometry(0.05),
+      new THREE.MeshBasicMaterial({ color: 0xfbbf24 }));
+    dot.position.set(pos.x, pos.y, 0);
+    scene.add(dot);
+    return;
+  }
+
+  // ── 3D 网格拾取 ──────────────────────────────
+  if (pickStep === 0 || !currentMesh) return;
+
+  raycaster.setFromCamera(mouse, camera);
+  const hits = raycaster.intersectObject(currentMesh);
+  if (!hits.length) return;
+
+  const hit   = hits[0];
+  const pt    = hit.point;
+  const faceN = hit.face.normal.clone()
+                  .transformDirection(currentMesh.matrixWorld)
+                  .normalize();
+
+  if (pickStep === 1) {
+    // 测地起点
+    if (sourceMarker) scene.remove(sourceMarker);
+    sourceMarker = new THREE.Mesh(new THREE.SphereGeometry(0.05),
+      new THREE.MeshBasicMaterial({ color: 0x00ff00, depthTest: false }));
+    sourceMarker.position.copy(pt);
+    sourceMarker.renderOrder = 999;
+    scene.add(sourceMarker);
+    geodesicSource = [pt.x, pt.y, pt.z];
+    pickStep = 2;
+    status('请点击网格选择【终点】');
+
+  } else if (pickStep === 2) {
+    // 测地终点
+    if (targetMarker) scene.remove(targetMarker);
+    targetMarker = new THREE.Mesh(new THREE.SphereGeometry(0.05),
+      new THREE.MeshBasicMaterial({ color: 0xff0000, depthTest: false }));
+    targetMarker.position.copy(pt);
+    targetMarker.renderOrder = 999;
+    scene.add(targetMarker);
+    geodesicTarget = [pt.x, pt.y, pt.z];
+    pickStep = 0;
+    document.getElementById('btn-geodesic-pick').classList.remove('active');
+    status('起/终点已选定，点击「计算测地路径」');
+
+  } else if (pickStep === 3) {
+    // 打孔圆心
+    holePick = {
+      center: [pt.x, pt.y, pt.z],
+      normal: [faceN.x, faceN.y, faceN.z],
+    };
+    pickStep = 0;
+    document.getElementById('btn-hole-pick').classList.remove('active');
+
+    // 移除旧预览
+    if (holePreviewMesh) { scene.remove(holePreviewMesh); holePreviewMesh = null; }
+
+    // 请求圆柱预览
+    const radius = parseFloat(document.getElementById('hole-radius').value);
+    const depth  = parseFloat(document.getElementById('hole-depth').value);
+    fetch(`${API}/csg/preview_cylinder`, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ center: holePick.center, normal: holePick.normal, radius, depth }),
+    }).then(r => r.json()).then(data => {
+      const geo = buildGeometry(data);
+      holePreviewMesh = new THREE.Mesh(geo,
+        new THREE.MeshPhongMaterial({
+          color: 0xff6600, transparent: true, opacity: 0.45,
+          side: THREE.DoubleSide, depthWrite: false,
+        }));
+      scene.add(holePreviewMesh);
+      document.getElementById('hole-result').textContent = '圆柱已预览，确认后点击「执行打孔」';
+      status('打孔位置已拾取，查看橙色预览圆柱');
+    }).catch(() => {
+      document.getElementById('hole-result').textContent = '预览失败（检查后端连接）';
+    });
+  }
+});
+
+// ════════════════════════════════════════════════
+// 导入 OBJ
+// ════════════════════════════════════════════════
+window.uploadOBJ = async () => {
+  const fileInput = document.getElementById('obj-file-input');
+  if (!fileInput.files.length) { status('请先选择一个 OBJ 文件'); return; }
+  const formData = new FormData();
+  formData.append('file', fileInput.files[0]);
+  status('上传并解析 OBJ 中...');
+  try {
+    const res  = await fetch(`${API}/upload_obj`, { method: 'POST', body: formData });
+    const data = await res.json();
+    if (!res.ok) { status('错误：' + (data.detail || '��传失败')); return; }
+    applyMeshData(data, 0x60a5fa);
+    status(`导入成功：${data.vertices.length/3} 顶点，${data.faces.length/3} 面片`);
+  } catch(e) { status('错误：' + e.message); }
+};
 
 // ════════════════════════════════════════════════
 // 算法 1：3D 凸包
@@ -278,55 +448,20 @@ let mode2D          = false;
 window.runConvexHull3D = async () => {
   const n = parseInt(document.getElementById('pt-count').value);
   const points = Array.from({ length: n }, () => [
-    (Math.random() - 0.5) * 4,
-    (Math.random() - 0.5) * 4,
-    (Math.random() - 0.5) * 4,
-  ]);
-
+    (Math.random()-0.5)*4, (Math.random()-0.5)*4, (Math.random()-0.5)*4]);
   status('计算凸包中...');
   try {
     const res  = await fetch(`${API}/convex_hull_3d`, {
-      method:  'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body:    JSON.stringify({ points }),
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ points }),
     });
     const data = await res.json();
-    clearScene();
-
-    const geo = buildGeometry(data);
-    const mat = new THREE.MeshPhongMaterial({
-      color: 0x60a5fa, transparent: true, opacity: 0.6,
-      side: THREE.DoubleSide,
-    });
-    currentMesh = new THREE.Mesh(geo, mat);
-    scene.add(currentMesh);
-    scene.add(new THREE.LineSegments(
-      new THREE.WireframeGeometry(geo),
-      new THREE.LineBasicMaterial({
-        color: 0xa78bfa, opacity: 0.4, transparent: true
-      })
-    ));
-
-    // ── 保存 mesh_id 和网格数据 ──────────────────
-    currentMeshId = data.mesh_id;
-    currentMeshData = {
-      vertices:  data.vertices,
-      face_id_0: data.faces.filter((_, i) => i % 3 === 0),
-      face_id_1: data.faces.filter((_, i) => i % 3 === 1),
-      face_id_2: data.faces.filter((_, i) => i % 3 === 2),
-      vertices_nested: [],
-    };
-    for (let i = 0; i < data.vertices.length; i += 3)
-      currentMeshData.vertices_nested.push([
-        data.vertices[i], data.vertices[i+1], data.vertices[i+2]
-      ]);
-
-    status(`凸包：${data.vertices.length/3} 顶点，` +
-           `${data.faces.length/3} 面片`);
+    applyMeshData(data, 0x60a5fa);
+    status(`凸包：${data.vertices.length/3} 顶点，${data.faces.length/3} 面片`);
   } catch(e) { status('错误：' + e.message); }
 };
 
-// ════════════════════════════════════════════════
+// ════════════════════════════════════════���═══════
 // 算法 2：拉普拉斯平滑
 // ════════════════════════════════════════════════
 window.runSmooth = async () => {
@@ -335,8 +470,7 @@ window.runSmooth = async () => {
   status(`平滑中（${iter} 次迭代）...`);
   try {
     const res  = await fetch(`${API}/smooth`, {
-      method:  'POST',
-      headers: { 'Content-Type': 'application/json' },
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         vertices:   currentMeshData.vertices_nested,
         face_id_0:  currentMeshData.face_id_0,
@@ -346,382 +480,14 @@ window.runSmooth = async () => {
       }),
     });
     const data = await res.json();
-    clearScene();
-
-    const geo = buildGeometry(data);
-    currentMesh = new THREE.Mesh(geo,
-      new THREE.MeshPhongMaterial({
-        color: 0x10b981, side: THREE.DoubleSide
-      })
-    );
-    scene.add(currentMesh);
-    scene.add(new THREE.LineSegments(
-      new THREE.WireframeGeometry(geo),
-      new THREE.LineBasicMaterial({
-        color: 0x6ee7b7, transparent: true, opacity: 0.3
-      })
-    ));
-
-    // ── 更新 mesh_id 和顶点数据 ──────────────────
-    currentMeshId = data.mesh_id;
-    currentMeshData.vertices = data.vertices;
-    currentMeshData.vertices_nested = [];
-    for (let i = 0; i < data.vertices.length; i += 3)
-      currentMeshData.vertices_nested.push([
-        data.vertices[i], data.vertices[i+1], data.vertices[i+2]
-      ]);
-
+    applyMeshData(data, 0x10b981);
     status(`平滑完成：${iter} 次迭代`);
   } catch(e) { status('错误：' + e.message); }
 };
 
 // ════════════════════════════════════════════════
-// 算法 3：曲率热力图
+// 算法 3：Loop 细分
 // ════════════════════════════════════════════════
-window.runCurvature = async () => {
-  if (!currentMeshId) { status('请先加载一个网格'); return; }
-  status('计算曲率中...');
-  try {
-    const res  = await fetch(`${API}/curvature`, {
-      method:  'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        mesh_id:      currentMeshId,
-        input_points: currentMeshData.vertices_nested,
-      }),
-    });
-    const data = await res.json();
-
-    if (currentMesh) {
-      applyHeatmapColors(currentMesh.geometry, data.max_curvatures);
-      currentMesh.material = new THREE.MeshPhongMaterial({
-        vertexColors: true, side: THREE.DoubleSide
-      });
-    }
-    status('曲率热力图渲染完成');
-  } catch(e) { status('错误：' + e.message); }
-};
-
-// ════════════════════════════════════════════════
-// 算法 4：测地线路径（射线拾取起/终点）
-// ════════════════════════════════════════════════
-let pickStep = 0;   // 0=空闲, 1=选起点, 2=选终点
-let sourceMarker = null;
-let targetMarker = null;
-
-window.startGeodesicPick = () => {
-  pickStep = 1;
-  geodesicSource = null;
-  geodesicTarget = null;
-  status('请点击网格选择【起点】');
-};
-
-const raycaster = new THREE.Raycaster();
-const mouse     = new THREE.Vector2();
-
-renderer.domElement.addEventListener('click', (e) => {
-  if (pickStep === 0 || !currentMesh) return;
-
-  const rect = renderer.domElement.getBoundingClientRect();
-  mouse.x = ((e.clientX - rect.left) / rect.width)  *  2 - 1;
-  mouse.y = ((e.clientY - rect.top)  / rect.height) * -2 + 1;
-
-  raycaster.setFromCamera(mouse, camera);
-  const hits = raycaster.intersectObject(currentMesh);
-  if (!hits.length) return;
-
-  const pt = hits[0].point;
-  const coord = [pt.x, pt.y, pt.z];
-
-  if (pickStep === 1) {
-    if (sourceMarker) scene.remove(sourceMarker);
-    sourceMarker = new THREE.Mesh(
-      new THREE.SphereGeometry(0.05),
-      new THREE.MeshBasicMaterial({ color: 0x00ff00, depthTest: false })
-    );
-    sourceMarker.position.set(pt.x, pt.y, pt.z);
-    sourceMarker.renderOrder = 999;
-    scene.add(sourceMarker);
-
-    geodesicSource = coord;
-    pickStep = 2;
-    status('请点击网格选择【终点】');
-
-  } else {
-    if (targetMarker) scene.remove(targetMarker);
-    targetMarker = new THREE.Mesh(
-      new THREE.SphereGeometry(0.05),
-      new THREE.MeshBasicMaterial({ color: 0xff0000, depthTest: false })
-    );
-    targetMarker.position.set(pt.x, pt.y, pt.z);
-    targetMarker.renderOrder = 999;
-    scene.add(targetMarker);
-
-    geodesicTarget = coord;
-    pickStep = 0;
-    status('起/终点已选定，点击「计算测地路径」');
-  }
-});
-
-window.runGeodesic = async () => {
-  if (!geodesicSource || !geodesicTarget) {
-    status('请先选择起/终点'); return;
-  }
-  if (!currentMeshId) { status('请先加载一个网格'); return; }
-  status('计算测地路径中...');
-  try {
-    const res  = await fetch(`${API}/geodesic_path`, {
-      method:  'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        mesh_id: currentMeshId,
-        source:  geodesicSource,
-        target:  geodesicTarget,
-      }),
-    });
-    const data = await res.json();
-    if (!res.ok) {
-      status('错误：' + (data.detail || '测地线计算失败'));
-      return;
-    }
-    // 渲染黄色测地路径折线
-    const pts = data.path.map(p => new THREE.Vector3(p[0], p[1], p[2]));
-    scene.add(new THREE.Line(
-      new THREE.BufferGeometry().setFromPoints(pts),
-      new THREE.LineBasicMaterial({ color: 0xfbbf24 })
-    ));
-
-    // 在侧边栏面板内展示距离数值
-    const distStr = data.distance !== undefined
-      ? data.distance.toFixed(6)
-      : '—';
-    document.getElementById('geodesic-result').textContent =
-      `📐 测地距离：${distStr}`;
-
-    status(`测地路径：${pts.length} 个节点，距离 = ${distStr}`);
-  } catch(e) { status('错误：' + e.message); }
-};
-
-// ════════════════════════════════════════════════
-// 算法 5：网格切片
-// ════════════════════════════════════════════════
-window.runSlicer = async () => {
-  if (!currentMeshId) { status('请先加载一个网格'); return; }
-  const n = parseInt(document.getElementById('slice-count').value);
-
-  // 读取选中的轴向
-  const axisVal = document.querySelector('input[name="slice-axis"]:checked').value;
-  // X→0, Y→1, Z→2
-  const axisIdx = { X: 0, Y: 1, Z: 2 }[axisVal];
-  const normal  = [0, 0, 0];
-  normal[axisIdx] = 1;
-
-  // 取该轴的顶点分量范围
-  const vals = currentMeshData.vertices_nested.map(v => v[axisIdx]);
-  console.log('vertices_nested长度:', currentMeshData.vertices_nested.length);
-  console.log('vertices长度:', currentMeshData.vertices.length);
-  const vMin = Math.min(...vals), vMax = Math.max(...vals);
-  // 平面方程 normal·p + d = 0  →  d = -(normal·p) = -coord
-  const ds = Array.from({ length: n }, (_, i) =>
-    (vMin + (vMax - vMin) * (i + 1) / (n + 1))
-  );
-
-  status(`沿 ${axisVal} 轴切片中...`);
-  try {
-    const res = await fetch(`${API}/slicer`, {
-      method:  'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        mesh_id:      currentMeshId,
-        plane_normal: normal,
-        plane_ds:     ds,
-      }),
-    });
-    const data = await res.json();
-    //console.log('切片返回数据:', JSON.stringify(data.slices[0]));
-    const colors = [0xf87171, 0xfbbf24, 0x34d399, 0x60a5fa, 0xc084fc];
-    data.slices.forEach((s, idx) => {
-      const color = colors[idx % colors.length];
-      s.contours.forEach(contour => {
-          const pts = contour.map(p => new THREE.Vector3(p[0], p[1], p[2]));
-          if (!pts.length) return;
-
-          // 首尾距离足够近才闭合（凸包自动闭合，复杂非凸模型保持开放）
-          if (pts[0].distanceTo(pts[pts.length - 1]) < 0.2) {
-              pts.push(pts[0]);
-          }
-          scene.add(new THREE.Line(
-              new THREE.BufferGeometry().setFromPoints(pts),
-              new THREE.LineBasicMaterial({ color })
-          ));
-      });
-    });
-    status(`${axisVal} 轴切片完成：${data.slices.length} 个截面`);
-  } catch(e) { status('错误：' + e.message); }
-};
-
-// ════════════════════════════════════════════════
-// 算法 6：2D 凸包（XY 平面交互）
-// ════════════════════════════════════════════════
-window.enable2DMode = () => {
-  mode2D = true;
-  camera.position.set(0, 0, 8);
-  camera.lookAt(0, 0, 0);
-  status('2D 模式：在场景中点击添加点');
-};
-
-window.clear2D = () => {
-  points2D = [];
-  clearScene();
-  // 清空时同步重置网格状态
-  currentMesh     = null;
-  currentMeshData = null;
-  currentMeshId   = null;
-  status('2D 点集已清空');
-};
-
-renderer.domElement.addEventListener('click', (e) => {
-  if (!mode2D) return;
-  const rect = renderer.domElement.getBoundingClientRect();
-  mouse.x = ((e.clientX - rect.left) / rect.width)  *  2 - 1;
-  mouse.y = ((e.clientY - rect.top)  / rect.height) * -2 + 1;
-
-  // 屏幕坐标反投影到 Z=0 平面
-  const vec = new THREE.Vector3(mouse.x, mouse.y, 0.5)
-    .unproject(camera);
-  const dir = vec.sub(camera.position).normalize();
-  const t   = -camera.position.z / dir.z;
-  const pos = camera.position.clone().add(dir.multiplyScalar(t));
-
-  points2D.push([pos.x, pos.y]);
-
-  const dot = new THREE.Mesh(
-    new THREE.SphereGeometry(0.05),
-    new THREE.MeshBasicMaterial({ color: 0xfbbf24 })
-  );
-  dot.position.set(pos.x, pos.y, 0);
-  scene.add(dot);
-});
-
-window.run2DConvexHull = async () => {
-  if (points2D.length < 3) { status('至少需要 3 个点'); return; }
-  try {
-    const res  = await fetch(`${API}/convex_hull_2d`, {
-      method:  'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ polygon: points2D }),
-    });
-    const data = await res.json();
-
-    const hull = [...data.hull, data.hull[0]];   // 闭合
-    const pts  = hull.map(p => new THREE.Vector3(p[0], p[1], 0));
-    scene.add(new THREE.Line(
-      new THREE.BufferGeometry().setFromPoints(pts),
-      new THREE.LineBasicMaterial({ color: 0xa78bfa })
-    ));
-    status(`2D 凸包：${data.hull.length} 个顶点`);
-  } catch(e) { status('错误：' + e.message); }
-};
-
-// ════════════════════════════════════════════════
-// 算法 7-12：新增功能实现（边界/法向/包围盒/采样/细分/测地距离）
-// ════════════════════════════════════════════════
-
-window.runMeshBoundary = async () => {
-  if (!currentMeshId) { status('请先加载一个网格'); return; }
-  status('提取网格边界中...');
-  try {
-    const res  = await fetch(`${API}/mesh_boundary`, {
-      method:  'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ mesh_id: currentMeshId }),  // ← 只发 mesh_id
-    });
-    if (!res.ok) {
-      const err = await res.json();
-      status('错误：' + JSON.stringify(err.detail)); return;
-    }
-    const data = await res.json();
-    const colors = [0xf87171, 0xfbbf24, 0x34d399, 0x60a5fa, 0xc084fc];
-    data.boundaries.forEach((loop, idx) => {
-      const pts = loop.map(p => new THREE.Vector3(p[0], p[1], p[2]));
-      if (!pts.length) return;
-      pts.push(pts[0]);  // 闭合
-      scene.add(new THREE.Line(
-        new THREE.BufferGeometry().setFromPoints(pts),
-        new THREE.LineBasicMaterial({ color: colors[idx % colors.length], linewidth: 2 })
-      ));
-    });
-    status(`网格边界：${data.boundaries.length} 条轮廓`);
-  } catch(e) { status('错误：' + e.message); }
-};
-
-window.runMeshNormals = async () => {
-  if (!currentMeshId) { status('请先加载一个网格'); return; }
-  const arrowLen = parseFloat(document.getElementById('normal-len').value);
-  status('计算法向量中...');
-  try {
-    const res  = await fetch(`${API}/mesh_normals`, {
-      method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ mesh_id: currentMeshId, input_points: [] }),
-    });
-    const data = await res.json();
-    const step = Math.max(1, Math.floor(data.vertices.length / 200));
-    const positions = [], colorsArr = [];
-    for (let i = 0; i < data.vertices.length; i += step) {
-      const v = data.vertices[i], n = data.normals[i];
-      positions.push(v[0], v[1], v[2],
-        v[0]+n[0]*arrowLen, v[1]+n[1]*arrowLen, v[2]+n[2]*arrowLen);
-      colorsArr.push(0, 1, 1, 1, 1, 1);
-    }
-    const geo = new THREE.BufferGeometry();
-    geo.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
-    geo.setAttribute('color',    new THREE.Float32BufferAttribute(colorsArr, 3));
-    scene.add(new THREE.LineSegments(geo,
-      new THREE.LineBasicMaterial({ vertexColors: true })
-    ));
-    status(`法向量：${positions.length/6} 条箭头`);
-  } catch(e) { status('错误：' + e.message); }
-};
-
-window.runMeshBBox = async () => {
-  if (!currentMeshId) { status('请先加载一个网格'); return; }
-  status('计算包围盒...');
-  try {
-    const res  = await fetch(`${API}/mesh_bbox`, {
-      method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ mesh_id: currentMeshId, input_points: [] }),
-    });
-    const data = await res.json();
-    const mn = data.min_corner, mx = data.max_corner;
-    const box = new THREE.Box3(
-      new THREE.Vector3(mn[0], mn[1], mn[2]),
-      new THREE.Vector3(mx[0], mx[1], mx[2])
-    );
-    scene.add(new THREE.Box3Helper(box, 0xfbbf24));
-    status(`包围盒：${(mx[0]-mn[0]).toFixed(3)} × ${(mx[1]-mn[1]).toFixed(3)} × ${(mx[2]-mn[2]).toFixed(3)}`);
-  } catch(e) { status('错误：' + e.message); }
-};
-
-window.runMeshSampling = async () => {
-  if (!currentMeshId) { status('请先加载一个网格'); return; }
-  const density = parseFloat(document.getElementById('sample-density').value);
-  status('表面采样中...');
-  try {
-    const res  = await fetch(`${API}/mesh_sampling`, {
-      method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ mesh_id: currentMeshId, density }),
-    });
-    const data = await res.json();
-    const flat = data.points.flatMap(p => [p[0], p[1], p[2]]);
-    const geo  = new THREE.BufferGeometry();
-    geo.setAttribute('position', new THREE.Float32BufferAttribute(flat, 3));
-    scene.add(new THREE.Points(geo,
-      new THREE.PointsMaterial({ color: 0x00ffff, size: 0.04 })
-    ));
-    status(`表面采样：${data.points.length} 个点`);
-  } catch(e) { status('错误：' + e.message); }
-};
-
 window.runSubdivide = async () => {
   if (!currentMeshData) { status('请先加载一个网格'); return; }
   status('Loop 细分中...');
@@ -737,201 +503,380 @@ window.runSubdivide = async () => {
       }),
     });
     const data = await res.json();
-    clearScene();
-    const geo = buildGeometry(data);
-    currentMesh = new THREE.Mesh(geo, new THREE.MeshPhongMaterial({
-      color: 0x818cf8, side: THREE.DoubleSide
-    }));
-    scene.add(currentMesh);
-    scene.add(new THREE.LineSegments(
-      new THREE.WireframeGeometry(geo),
-      new THREE.LineBasicMaterial({ color: 0xc7d2fe, transparent: true, opacity: 0.2 })
-    ));
-    currentMeshId = data.mesh_id;
-    currentMeshData.vertices  = data.vertices;
-    currentMeshData.face_id_0 = data.faces.filter((_,i) => i%3===0);
-    currentMeshData.face_id_1 = data.faces.filter((_,i) => i%3===1);
-    currentMeshData.face_id_2 = data.faces.filter((_,i) => i%3===2);
-    currentMeshData.vertices_nested = [];
-    for (let i = 0; i < data.vertices.length; i += 3)
-      currentMeshData.vertices_nested.push([
-        data.vertices[i], data.vertices[i+1], data.vertices[i+2]
-      ]);
-    status(`Loop 细分完成：${data.faces.length/3} 面片`);
+    applyMeshData(data, 0x60a5fa);
+    status(`细分完成：${data.vertices.length/3} 顶点，${data.faces.length/3} 面片`);
   } catch(e) { status('错误：' + e.message); }
 };
 
-window.runGeodesicDistance = async () => {
-  if (!geodesicSource || !geodesicTarget) {
-    status('请先通过「选择起/终点」选取两点'); return;
-  }
+// ════════════════════════════════════════════════
+// 算法 4：曲率热力图
+// ════════════════════════════════════════════════
+window.runCurvature = async () => {
   if (!currentMeshId) { status('请先加载一个网格'); return; }
-  status('计算测地距离...');
+  status('计算曲率中...');
   try {
-    const res  = await fetch(`${API}/geodesic_distance`, {
+    const res  = await fetch(`${API}/curvature`, {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        mesh_id: currentMeshId, source: geodesicSource, target: geodesicTarget,
-      }),
+      body: JSON.stringify({ mesh_id: currentMeshId, input_points: currentMeshData.vertices_nested }),
     });
     const data = await res.json();
-    status(`测地线距离：${data.distance.toFixed(6)}`);
+    if (currentMesh) {
+      applyHeatmapColors(currentMesh.geometry, data.max_curvatures);
+      currentMesh.material = new THREE.MeshPhongMaterial({ vertexColors: true, side: THREE.DoubleSide });
+    }
+    status('曲率热力图渲染完成');
   } catch(e) { status('错误：' + e.message); }
 };
 
 // ════════════════════════════════════════════════
-// 算法 13：2D 布尔并集
-// unionMode: 0=关闭, 1=收集多边形A, 2=收集多边形B
+// 算法 5：测地线路径（射线拾取起/终点）
 // ════════════════════════════════════════════════
-let unionMode  = 0;
-let unionPoly0 = [];
-let unionPoly1 = [];
+window.startGeodesicPick = () => {
+  pickStep = 1;
+  geodesicSource = null;
+  geodesicTarget = null;
+  document.getElementById('btn-geodesic-pick').classList.add('active');
+  status('请点击网格选择【起点】');
+};
 
-// 覆盖 2D 凸包的第二个 click 监听器，同时处理 union 点收集
-// 注意：直接在现有 if (!mode2D) return 前插入 union 逻辑
-window.startUnionPoly0 = () => {
-  unionPoly0 = [];
-  unionMode  = 1;
-  mode2D     = true;
+window.runGeodesic = async () => {
+  if (!geodesicSource || !geodesicTarget) { status('请先选择起/终点'); return; }
+  if (!currentMeshId) { status('请先加载一个网格'); return; }
+  status('计算测地路径中...');
+  try {
+    const res  = await fetch(`${API}/geodesic_path`, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ mesh_id: currentMeshId, source: geodesicSource, target: geodesicTarget }),
+    });
+    const data = await res.json();
+    if (!res.ok) { status('错误：' + (data.detail || '测地线计算失败')); return; }
+    const pts = data.path.map(p => new THREE.Vector3(p[0], p[1], p[2]));
+    scene.add(new THREE.Line(
+      new THREE.BufferGeometry().setFromPoints(pts),
+      new THREE.LineBasicMaterial({ color: 0xfbbf24 })));
+    const distStr = data.distance !== undefined ? data.distance.toFixed(6) : '—';
+    document.getElementById('geodesic-result').textContent = `📐 测地距离：${distStr}`;
+    status(`测地路径：${pts.length} 个顶点，距离 ${distStr}`);
+  } catch(e) { status('错误：' + e.message); }
+};
+
+// ════════════════════════════════════════════════
+// 算法 6：网格切片
+// ════════════════════════════════════════════════
+window.runSlicer = async () => {
+  if (!currentMeshId) { status('请先加载一个网格'); return; }
+  const count = parseInt(document.getElementById('slice-count').value);
+  const axis  = document.querySelector('input[name="slice-axis"]:checked').value;
+
+  // 读取包围盒确定切片范围
+  const bbRes  = await fetch(`${API}/mesh_bbox`, {
+    method: 'POST', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ mesh_id: currentMeshId, input_points: [] }),
+  });
+  const bb = await bbRes.json();
+  const mn = bb.min_corner, mx = bb.max_corner;
+
+  let normal, minVal, maxVal;
+  if (axis === 'X') { normal = [1,0,0]; minVal = mn[0]; maxVal = mx[0]; }
+  else if (axis === 'Y') { normal = [0,1,0]; minVal = mn[1]; maxVal = mx[1]; }
+  else                   { normal = [0,0,1]; minVal = mn[2]; maxVal = mx[2]; }
+
+  const eps = (maxVal - minVal) * 0.01;
+  const plane_ds = Array.from({ length: count }, (_, i) =>
+    -(minVal + eps + (maxVal - minVal - 2*eps) * i / (count - 1 || 1)));
+
+  status('切片中...');
+  try {
+    const res  = await fetch(`${API}/slicer`, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ mesh_id: currentMeshId, plane_normal: normal, plane_ds }),
+    });
+    const data = await res.json();
+    const colors = [0xf87171, 0xfbbf24, 0x34d399, 0x60a5fa, 0xc084fc,
+                    0xfb923c, 0xa3e635, 0x22d3ee, 0xe879f9, 0xf43f5e];
+    let total = 0;
+    data.slices.forEach((slice, si) => {
+      const color = colors[si % colors.length];
+      slice.contours.forEach(seg => {
+        if (seg.length < 2) return;
+        const pts = seg.map(p => new THREE.Vector3(p[0], p[1], p[2]));
+        scene.add(new THREE.Line(
+          new THREE.BufferGeometry().setFromPoints(pts),
+          new THREE.LineBasicMaterial({ color })));
+        total++;
+      });
+    });
+    status(`切片完成：${data.slices.length} 层，共 ${total} 段轮廓`);
+  } catch(e) { status('错误：' + e.message); }
+};
+
+// ════════════════════════════════════════════════
+// 算法 7：网格边界
+// ════════════════════════════════════════════════
+window.runMeshBoundary = async () => {
+  if (!currentMeshId) { status('请先加载一个网格'); return; }
+  status('提取网格边界中...');
+  try {
+    const res  = await fetch(`${API}/mesh_boundary`, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ mesh_id: currentMeshId }),
+    });
+    if (!res.ok) { const err = await res.json(); status('错误：' + JSON.stringify(err.detail)); return; }
+    const data = await res.json();
+    const colors = [0xf87171, 0xfbbf24, 0x34d399, 0x60a5fa, 0xc084fc];
+    data.boundaries.forEach((loop, idx) => {
+      const pts = loop.map(p => new THREE.Vector3(p[0], p[1], p[2]));
+      if (!pts.length) return;
+      pts.push(pts[0]);
+      scene.add(new THREE.Line(
+        new THREE.BufferGeometry().setFromPoints(pts),
+        new THREE.LineBasicMaterial({ color: colors[idx % colors.length], linewidth: 2 })));
+    });
+    status(`网格边界：${data.boundaries.length} 条轮廓`);
+  } catch(e) { status('错误：' + e.message); }
+};
+
+// ════════════════════════════════════════════════
+// 算法 8：顶点法向量
+// ════════════════════════════════════════════════
+window.runMeshNormals = async () => {
+  if (!currentMeshId) { status('请先加载一个网格'); return; }
+  const arrowLen = parseFloat(document.getElementById('normal-len').value);
+  status('计算法向量中...');
+  try {
+    const res  = await fetch(`${API}/mesh_normals`, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ mesh_id: currentMeshId, input_points: [] }),
+    });
+    const data = await res.json();
+    const positions = [], colorsArr = [];
+    data.vertices.forEach((v, i) => {
+      const n = data.normals[i];
+      positions.push(v[0], v[1], v[2]);
+      positions.push(v[0]+n[0]*arrowLen, v[1]+n[1]*arrowLen, v[2]+n[2]*arrowLen);
+      colorsArr.push(0,1,1, 1,1,1);
+    });
+    const geo = new THREE.BufferGeometry();
+    geo.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
+    geo.setAttribute('color',    new THREE.Float32BufferAttribute(colorsArr, 3));
+    scene.add(new THREE.LineSegments(geo, new THREE.LineBasicMaterial({ vertexColors: true })));
+    status(`法向量：${data.vertices.length} 条箭头`);
+  } catch(e) { status('错误：' + e.message); }
+};
+
+// ════════════════════════════════════════════════
+// 算法 9：包围盒
+// ════════════════════════════════════════════════
+window.runMeshBBox = async () => {
+  if (!currentMeshId) { status('请先加载一个网格'); return; }
+  status('计算包围盒...');
+  try {
+    const res  = await fetch(`${API}/mesh_bbox`, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ mesh_id: currentMeshId, input_points: [] }),
+    });
+    const data = await res.json();
+    const mn = data.min_corner, mx = data.max_corner;
+    const box = new THREE.Box3(
+      new THREE.Vector3(mn[0],mn[1],mn[2]),
+      new THREE.Vector3(mx[0],mx[1],mx[2]));
+    scene.add(new THREE.Box3Helper(box, 0xfbbf24));
+    status(`包围盒：${(mx[0]-mn[0]).toFixed(3)} × ${(mx[1]-mn[1]).toFixed(3)} × ${(mx[2]-mn[2]).toFixed(3)}`);
+  } catch(e) { status('错误：' + e.message); }
+};
+
+// ════════════════════════════════════════════════
+// 算法 10：表面采样
+// ════════════════════════════════════════════════
+window.runMeshSampling = async () => {
+  if (!currentMeshId) { status('请先加载一个网格'); return; }
+  const density = parseFloat(document.getElementById('sample-density').value);
+  status('表面采样中...');
+  try {
+    const res  = await fetch(`${API}/mesh_sampling`, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ mesh_id: currentMeshId, density }),
+    });
+    const data = await res.json();
+    const flat = data.points.flatMap(p => [p[0], p[1], p[2]]);
+    const geo  = new THREE.BufferGeometry();
+    geo.setAttribute('position', new THREE.Float32BufferAttribute(flat, 3));
+    scene.add(new THREE.Points(geo, new THREE.PointsMaterial({ color: 0x00ffff, size: 0.04 })));
+    status(`表面采样：${data.points.length} 个点`);
+  } catch(e) { status('错误：' + e.message); }
+};
+
+// ════════════════════════════════════════════════
+// 算法 11：2D 凸包
+// ════════════════════════════════════════════════
+window.enable2DMode = () => {
+  mode2D = true;
   camera.position.set(0, 0, 8);
   camera.lookAt(0, 0, 0);
+  status('2D 模式：点击画布添加点');
+};
+
+window.run2DConvexHull = async () => {
+  if (points2D.length < 3) { status('至少需要 3 个点'); return; }
+  try {
+    const res  = await fetch(`${API}/convex_hull_2d`, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ polygon: points2D }),
+    });
+    const data = await res.json();
+    const hull = [...data.hull, data.hull[0]];
+    const pts  = hull.map(p => new THREE.Vector3(p[0], p[1], 0));
+    scene.add(new THREE.Line(
+      new THREE.BufferGeometry().setFromPoints(pts),
+      new THREE.LineBasicMaterial({ color: 0xa78bfa })));
+    status(`2D 凸包：${data.hull.length} 个顶点`);
+  } catch(e) { status('错误：' + e.message); }
+};
+
+window.clear2D = () => {
+  points2D = []; mode2D = false;
+  clearScene();
+  status('2D 数据已清空');
+};
+
+// ════════════════════════════════════════════════
+// 算法 12：2D 多边形布尔并集
+// ════════════════════════════════════════════════
+window.startUnionPoly0 = () => {
+  unionPoly0 = []; unionMode = 1; mode2D = true;
+  camera.position.set(0, 0, 8); camera.lookAt(0, 0, 0);
   status('2D 模式（多边形 A）：点击添加红色顶点，完成后点「画多边形 B」');
 };
 
 window.startUnionPoly1 = () => {
-  unionPoly1 = [];
-  unionMode  = 2;
-  mode2D     = true;
-  status('2D 模式（多边形 B）：点击添加蓝色顶点，完成后点「计算布尔并集」');
+  unionPoly1 = []; unionMode = 2; mode2D = true;
+  status('2D 模式（多边形 B）：点击添加蓝色顶点，完成��点「计算布尔并集」');
 };
 
 window.clearUnion = () => {
-  unionPoly0 = []; unionPoly1 = [];
-  unionMode  = 0;  mode2D = false;
-  clearScene();
-  status('并集数据已清空');
+  unionPoly0 = []; unionPoly1 = []; unionMode = 0; mode2D = false;
+  clearScene(); status('并集数据已清空');
 };
-
-// 在现有 2D click 监听器之前注册 union 拦截
-// （利用 unionMode 标志区分，不再注册新的监听器，通过给已有监听器打补丁实现）
-// ── 重新注册一个补丁监听器，捕获 union 点 ────────
-renderer.domElement.addEventListener('click', (e) => {
-  // 只在 union 模式下生效
-  if (unionMode === 0) return;
-  const rect = renderer.domElement.getBoundingClientRect();
-  mouse.x = ((e.clientX - rect.left) / rect.width)  *  2 - 1;
-  mouse.y = ((e.clientY - rect.top)  / rect.height) * -2 + 1;
-  const vec = new THREE.Vector3(mouse.x, mouse.y, 0.5).unproject(camera);
-  const dir = vec.sub(camera.position).normalize();
-  const t   = -camera.position.z / dir.z;
-  const pos = camera.position.clone().add(dir.multiplyScalar(t));
-
-  const color = unionMode === 1 ? 0xf87171 : 0x60a5fa;
-  if (unionMode === 1) unionPoly0.push([pos.x, pos.y]);
-  else                 unionPoly1.push([pos.x, pos.y]);
-
-  const dot = new THREE.Mesh(
-    new THREE.SphereGeometry(0.05),
-    new THREE.MeshBasicMaterial({ color })
-  );
-  dot.position.set(pos.x, pos.y, 0);
-  scene.add(dot);
-});
 
 window.runPolygonUnion = async () => {
   if (unionPoly0.length < 3 || unionPoly1.length < 3) {
     status('每个多边形至少需要 3 个点'); return;
   }
-  unionMode = 0;  // 关闭输入
-  mode2D    = false;
+  unionMode = 0; mode2D = false;
   status('计算多边形并集...');
   try {
     const res  = await fetch(`${API}/polygon_union_2d`, {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ polygon_0: unionPoly0, polygon_1: unionPoly1 }),
     });
-    if (!res.ok) { status('服务端错误 ' + res.status); return; }
     const data = await res.json();
-    data.polygons.forEach(poly => {
+    data.polygons.forEach((poly, idx) => {
+      const color = [0xfbbf24, 0x34d399, 0x60a5fa][idx % 3];
       const pts = [...poly, poly[0]].map(p => new THREE.Vector3(p[0], p[1], 0));
       scene.add(new THREE.Line(
         new THREE.BufferGeometry().setFromPoints(pts),
-        new THREE.LineBasicMaterial({ color: 0xa78bfa, linewidth: 2 })
-      ));
+        new THREE.LineBasicMaterial({ color })));
     });
-    status(`布尔并集：面积=${data.area.toFixed(4)}，${data.polygons.length} 个多边形`);
+    status(`并集完成：${data.polygons.length} 个多边形，面积 ${data.area.toFixed(4)}`);
   } catch(e) { status('错误：' + e.message); }
 };
 
-window.uploadOBJ = async () => {
-  const fileInput = document.getElementById('obj-file-input');
-  if (!fileInput.files.length) { status('请先选择一个 OBJ 文件'); return; }
-
-  const formData = new FormData();
-  formData.append('file', fileInput.files[0]);
-
-  status('上传并解析中...');
-  try {
-    const res = await fetch(`${API}/upload_obj`, {
-      method: 'POST',
-      body: formData,   // 注意：不要设置 Content-Type，让浏览器自动填 multipart
-    });
-    if (!res.ok) {
-      const err = await res.json();
-      status('错误：' + (err.detail || res.statusText));
-      return;
-    }
-    const data = await res.json();
-    clearScene();
-
-    const geo = buildGeometry(data);
-    const mat = new THREE.MeshPhongMaterial({
-      color: 0x60a5fa, transparent: true, opacity: 0.6,
-      side: THREE.DoubleSide
-    });
-    currentMesh = new THREE.Mesh(geo, mat);
-    scene.add(currentMesh);
-    // mesh 加入场景后，移动相机适配网格大小，不动网格本身
-    const box    = new THREE.Box3().setFromObject(currentMesh);
-    const center = box.getCenter(new THREE.Vector3());
-    const size   = box.getSize(new THREE.Vector3());
-    const maxDim = Math.max(size.x, size.y, size.z);
-
-    camera.position.set(
-      center.x,
-      center.y,
-      center.z + maxDim * 2.5
-    );
-    camera.near = maxDim * 0.001;
-    camera.far  = maxDim * 100;
-    camera.updateProjectionMatrix();
-
-    controls.target.copy(center);  // 旋转中心对准网格中心
-    controls.update();
-    //-----------------------------------------
-    scene.add(new THREE.LineSegments(
-      new THREE.WireframeGeometry(geo),
-      new THREE.LineBasicMaterial({ color: 0x93c5fd, opacity: 0.4, transparent: true })
-    ));
-
-    // 更新 currentMeshData，使后续平滑/曲率等接口可用
-    currentMeshId = data.mesh_id;
-    currentMeshData = {
-      mesh_id:  data.mesh_id,
-      vertices: data.vertices,
-      face_id_0: data.faces.filter((_, i) => i % 3 === 0),
-      face_id_1: data.faces.filter((_, i) => i % 3 === 1),
-      face_id_2: data.faces.filter((_, i) => i % 3 === 2),
-    };
-    currentMeshData.vertices_nested = [];
-    for (let i = 0; i < data.vertices.length; i += 3)
-      currentMeshData.vertices_nested.push([
-        data.vertices[i], data.vertices[i+1], data.vertices[i+2]
-      ]);
-
-    status(`OBJ 导入完成：${data.vertices.length / 3} 顶点，${data.faces.length / 3} 面片`);
-  } catch (e) { status('错误：' + e.message); }
+// ════════════════════════════════════════════════
+// 算法 13：CSG 打孔
+// ════════════════════════════════════════════════
+window.startHolePick = () => {
+  if (!currentMesh) { status('请先加载一个网格'); return; }
+  holePick = null;
+  if (holePreviewMesh) { scene.remove(holePreviewMesh); holePreviewMesh = null; }
+  pickStep = 3;
+  document.getElementById('btn-hole-pick').classList.add('active');
+  document.getElementById('hole-result').textContent = '';
+  status('请点击网格表面选择打孔【圆心位置】');
 };
+
+window.runCSGHole = async () => {
+  if (!holePick)       { status('请先选择打孔位置'); return; }
+  if (!currentMeshId)  { status('请先加载一个网格'); return; }
+
+  const radius = parseFloat(document.getElementById('hole-radius').value);
+  const depth  = parseFloat(document.getElementById('hole-depth').value);
+  if (isNaN(radius) || radius <= 0) { status('半径必须大于 0'); return; }
+  if (isNaN(depth)  || depth  <= 0) { status('深度必须大于 0'); return; }
+
+  // 保存当前 mesh_id 用于撤销
+  prevMeshId = currentMeshId;
+
+  // 移除预览圆柱
+  if (holePreviewMesh) { scene.remove(holePreviewMesh); holePreviewMesh = null; }
+
+  status('CSG 打孔运算中（trimesh 布尔，可能需要几秒）...');
+  document.getElementById('hole-result').textContent = '计算中...';
+  try {
+    const res  = await fetch(`${API}/csg/hole`, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        mesh_id: currentMeshId,
+        center:  holePick.center,
+        normal:  holePick.normal,
+        radius, depth,
+      }),
+    });
+    const data = await res.json();
+    if (!res.ok) {
+      document.getElementById('hole-result').textContent = '失败：' + (data.detail || '未知错误');
+      status('打孔失败'); return;
+    }
+    applyMeshData(data, 0x60a5fa);
+    holePick = null;
+    document.getElementById('hole-result').textContent =
+      `✅ 打孔完成：${data.vertices.length/3} 顶点，${data.faces.length/3} 面片`;
+    status('CSG 打孔完成');
+  } catch(e) {
+    document.getElementById('hole-result').textContent = '错误：' + e.message;
+    status('错误：' + e.message);
+  }
+};
+
+window.undoCSGHole = async () => {
+  if (!prevMeshId) { status('没有可撤销的操作'); return; }
+  // 从服务端重新加载打孔前的网格
+  try {
+    const res  = await fetch(`${API}/mesh_bbox`, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ mesh_id: prevMeshId, input_points: [] }),
+    });
+    if (!res.ok) { status('撤销失败：找不到原始网格缓存'); return; }
+    // 重新 visualize 接口读回 OBJ
+    const visRes = await fetch(`${API}/visualize`, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ obj_string: '', label: '' }),
+    });
+    // 更简单的方法：直接把 prevMeshId 赋回 currentMeshId 并重建渲染
+    // 因为 OBJ 文件还在 mesh_cache，直接切换 mesh_id 并重加载顶点
+    const objRes = await fetch(`/mesh_cache/${prevMeshId}.obj`).catch(() => null);
+    if (objRes && objRes.ok) {
+      const text = await objRes.text();
+      const vRes = await fetch(`${API}/visualize`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ obj_string: text }),
+      });
+      const data = await vRes.json();
+      applyMeshData(data, 0x60a5fa);
+      holePick = null;
+      if (holePreviewMesh) { scene.remove(holePreviewMesh); holePreviewMesh = null; }
+      document.getElementById('hole-result').textContent = '↩ 已撤销';
+      status('撤销成功，已恢复打孔前的网格');
+      prevMeshId = null;
+    } else {
+      // 降级：直接把 currentMeshId 切回去，让后续操作基于旧 mesh_id
+      currentMeshId = prevMeshId;
+      prevMeshId = null;
+      document.getElementById('hole-result').textContent = '↩ mesh_id 已回滚（顶点未重渲染）';
+      status('mesh_id 已回滚');
+    }
+  } catch(e) { status('撤销失败：' + e.message); }
+};
+
 </script>
 </body>
 </html>
