@@ -646,34 +646,49 @@ def polygon_sampling_2d_regular(req: Polygon2DSamplingRequest):
 # ════════════════════════════════════════════════
 # 接口 19-21：CSG（构造实体几何）
 # ════════════════════════════════════════════════
-def _make_oriented_cylinder(center, normal_normalized, radius, height, segments=48):
+def _make_oriented_cylinder(center, normal_normalized, radius,
+                             inward_ext, outward_ext,
+                             segments=48):
     """
-    生成以 center 为轴中点、沿 normal_normalized 方向的圆柱。
-    步骤：
-      1. 在原点生成沿 Z 轴的圆柱（底面在 z=-half_h，顶面在 z=+half_h）
-      2. 旋转对齐法线，绕原点旋转（角度单位：弧度）
-         特殊情况：normal = [0,0,-1] 时叉积为零，需单独处理（绕 X 轴转 180°）
-      3. 平移到 center
+    注意：+normal方向=outward，-normal方向=inward
+    生成圆柱，以 center 为拾取点（入口面）：
+      - 朝 -normal（入射侧，模型内部）延伸 inward_ext
+      - 朝 +normal（出射侧，摄像头方向）延伸 outward_ext
+
+    坐标推导：
+      生成底面在原点（z=0）、顶面在 z=total_height 的圆柱
+      → 绕原点旋转对齐 normal（底面原点不动，顶面跑到 +normal*total_height）
+      → 平移 (center - normal*outward_ext)
+      → 底面最终在 center - normal*outward_ext（朝 -normal 方向，即入射端，深入模型）
+      → 顶面最终在 center + normal*inward_ext（朝 +normal 方向，即出射端，超出表面）
+
+    注意：参数名 inward/outward 与实际方向相反（历史遗留）
+    调用时须遵守如下约定：
+      csg_hole:             outward_ext=shortest_side, inward_ext=depth
+      csg_preview_cylinder: outward_ext=depth,         inward_ext=0
     """
     ax, ay, az = normal_normalized
+    total_height = inward_ext + outward_ext
 
-    half_h = height / 2.0
+    # ── 1. 生成底面在原点、顶面在 z=total_height 的圆柱 ──
+    # HGP_Mesh_Make_Cylinder(cx,cy,cz, r, h, seg) 中 cz 是轴向中心
+    # 轴向中心在 z=total_height/2 → 传入 cz=total_height/2
+    half_total = total_height / 2.0
     cyl_verts, cyl_fi0, cyl_fi1, cyl_fi2 = hgp_py.HGP_Mesh_Make_Cylinder(
-        0.0, 0.0, -half_h,
-        radius, height, segments)
+        0.0, 0.0, half_total,
+        radius, total_height, segments)
+    # 产生：底面在 half_total - half_total = 0，顶面在 half_total + half_total = total_height ✓
 
+    # ── 2. 旋转对齐 normal（绕原点旋转，底面圆心在原点保持不动）──
     z_axis = [0.0, 0.0, 1.0]
-    dot = ax*z_axis[0] + ay*z_axis[1] + az*z_axis[2]
-    dot = max(-1.0, min(1.0, dot))  # 数值钳位防止 acos 域错误
+    dot = max(-1.0, min(1.0, ax*z_axis[0] + ay*z_axis[1] + az*z_axis[2]))
 
-    if abs(dot - 1.0) > 1e-6:   # normal 不是 +Z，需要旋转
+    if abs(dot - 1.0) > 1e-6:
         if abs(dot + 1.0) < 1e-6:
-            # ── 特殊情况：normal = [0,0,-1]，与 Z 轴完全反向 ──
-            # 叉积为零，任取垂直轴（X 轴）旋转 180°
+            # normal 与 +Z 完全反向，叉积为零，绕 X 轴旋转 π
             rot_axis = [1.0, 0.0, 0.0]
-            angle = math.pi   # 弧度制，180°
+            angle = math.pi
         else:
-            # ── 一般情况：叉积求旋转轴 ──
             rx = z_axis[1]*az - z_axis[2]*ay
             ry = z_axis[2]*ax - z_axis[0]*az
             rz = z_axis[0]*ay - z_axis[1]*ax
@@ -686,22 +701,65 @@ def _make_oriented_cylinder(center, normal_normalized, radius, height, segments=
         hgp_py.HGP_Rotation_Obj(tmp_obj, angle, rot_axis)
         cyl_verts, cyl_fi0, cyl_fi1, cyl_fi2 = _load_mesh_from_obj(tmp_obj)
 
-    cx, cy, cz = center
-    cyl_verts = [[v[0]+cx, v[1]+cy, v[2]+cz] for v in cyl_verts]
+    # ── 3. 平移：底面（原点）→ center - normal * outward_ext ──
+    ox = center[0] - ax * outward_ext
+    oy = center[1] - ay * outward_ext
+    oz = center[2] - az * outward_ext
+    cyl_verts = [[v[0]+ox, v[1]+oy, v[2]+oz] for v in cyl_verts]
 
     return cyl_verts, cyl_fi0, cyl_fi1, cyl_fi2
+
 
 @app.post("/api/csg/hole")
 def csg_hole(req: CSGHoleRequest):
     """在主体网格上打一个圆柱孔（difference 布尔运算）"""
     ax, ay, az = _normalize(req.normal)
-
-    # depth * 1.05：圆柱略长于目标深度，避免共面导致布尔失败
-    cyl_verts, cyl_fi0, cyl_fi1, cyl_fi2 = _make_oriented_cylinder(
-        req.center, [ax, ay, az], req.radius, req.depth * 1.05)
-
     mesh_path = get_mesh_path(req.mesh_id)
+
+    # ── 包围盒对角线 ──────────────────────────────
     verts_a, fi0_a, fi1_a, fi2_a = _load_mesh_from_obj(mesh_path)
+    min_c, max_c = hgp_py.HGP_3D_Mesh_Boundingbox_C2(verts_a)
+    dx = max_c[0]-min_c[0]; dy = max_c[1]-min_c[1]; dz = max_c[2]-min_c[2]
+    diag = math.sqrt(dx*dx + dy*dy + dz*dz)
+
+    # ── 出射侧：无条件延伸至 diag ─────────────────
+    outward_ext = diag
+
+    # ── 入射侧：射线检测通孔/盲孔 ────────────────
+    EPS_OFFSET = max(diag * 0.005, 1e-4)
+    shifted = [req.center[0] - ax*EPS_OFFSET,
+               req.center[1] - ay*EPS_OFFSET,
+               req.center[2] - az*EPS_OFFSET]
+    ray_dir = [-ax, -ay, -az]
+    hits = hgp_py.HGP_3D_Intersection_Rays_Mesh_Vector3d(
+        [shifted], [ray_dir], mesh_path)
+    print(f"hits: {hits}")
+    print(f"hits type: {type(hits)}")
+    print(f"hits length: {len(hits) if hits else 'None/Empty'}")
+    print(f"s h i fted: {shifted}")
+    thickness = None
+    if hits:
+        h = hits[0]
+        ddx = h[0]-shifted[0]; ddy = h[1]-shifted[1]; ddz = h[2]-shifted[2]
+        dist = math.sqrt(ddx*ddx + ddy*ddy + ddz*ddz)
+        print(f"dist: {dist}")
+        if dist > EPS_OFFSET * 0.1:
+            thickness = EPS_OFFSET + dist
+
+    if thickness is not None and req.depth >= thickness:
+        inward_ext = diag
+        print(f"[csg_hole] 通孔: depth={req.depth:.4f} >= thickness={thickness:.4f}")
+    else:
+        inward_ext = req.depth
+        if thickness is None:
+            print(f"[csg_hole] 射线未命中对面，按盲孔处理")
+        else:
+            print(f"[csg_hole] 盲孔: depth={req.depth:.4f} < thickness={thickness:.4f}")
+
+    cyl_verts, cyl_fi0, cyl_fi1, cyl_fi2 = _make_oriented_cylinder(
+        req.center, [ax, ay, az], req.radius,
+        inward_ext=inward_ext,
+        outward_ext=outward_ext)
 
     verts_out, fi0_out, fi1_out, fi2_out = _do_boolean(
         verts_a, fi0_a, fi1_a, fi2_a,
@@ -728,12 +786,17 @@ def csg_boolean(req: CSGBooleanRequest):
 
 @app.post("/api/csg/preview_cylinder")
 def csg_preview_cylinder(req: CSGPreviewRequest):
-    """返回工具圆柱的网格，供前端半透明预览（不修改主体网格）"""
+    """返回工具圆柱网格供前端半透明预览
+    预览圆柱与实际打孔圆柱完全一致：
+      - inward_ext = depth（朝模型内钻入深度）
+      - outward_ext = 0（出射侧不超出，预览只展示钻入部分）
+    """
     ax, ay, az = _normalize(req.normal)
-
+    ax, ay, az = -ax, -ay, -az
     cyl_verts, cyl_fi0, cyl_fi1, cyl_fi2 = _make_oriented_cylinder(
-        req.center, [ax, ay, az], req.radius, req.depth)
-
+        req.center, [ax, ay, az], req.radius,
+        inward_ext=req.depth,
+        outward_ext=0.0)
     mesh_id, cyl_verts, cyl_fi0, cyl_fi1, cyl_fi2 = save_mesh(
         cyl_verts, cyl_fi0, cyl_fi1, cyl_fi2, repair=False)
     return mesh_response(cyl_verts, cyl_fi0, cyl_fi1, cyl_fi2, mesh_id)
