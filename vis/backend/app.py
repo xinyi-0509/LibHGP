@@ -650,36 +650,42 @@ def _make_oriented_cylinder(center, normal_normalized, radius, height, segments=
     """
     生成以 center 为轴中点、沿 normal_normalized 方向的圆柱。
     步骤：
-      1. 在原点生成沿 Z 轴的圆柱，令圆柱以原点为轴向中点
-         （底面在 z = -height/2，顶面在 z = +height/2）
-      2. 若法线不是 Z 轴，写入临时 OBJ，用 HGP_Rotation_Obj 绕原点旋转
+      1. 在原点生成沿 Z 轴的圆柱（底面在 z=-half_h，顶面在 z=+half_h）
+      2. 旋转对齐法线，绕原点旋转（角度单位：弧度）
+         特殊情况：normal = [0,0,-1] 时叉积为零，需单独处理（绕 X 轴转 180°）
       3. 平移到 center
     """
     ax, ay, az = normal_normalized
 
-    # ── 1. 在原点生成圆柱，中心在原点（底面偏 -height/2）──
     half_h = height / 2.0
     cyl_verts, cyl_fi0, cyl_fi1, cyl_fi2 = hgp_py.HGP_Mesh_Make_Cylinder(
-        0.0, 0.0, -half_h,   # ← 底面中心在 -half_h，使轴向中点落在原点
+        0.0, 0.0, -half_h,
         radius, height, segments)
 
-    # ── 2. 旋转对齐法线（绕原点旋转，中心不漂移）──
     z_axis = [0.0, 0.0, 1.0]
     dot = ax*z_axis[0] + ay*z_axis[1] + az*z_axis[2]
-    if abs(dot - 1.0) > 1e-6:
-        rx = z_axis[1]*az - z_axis[2]*ay
-        ry = z_axis[2]*ax - z_axis[0]*az
-        rz = z_axis[0]*ay - z_axis[1]*ax
-        rl = math.sqrt(rx*rx + ry*ry + rz*rz)
-        if rl > 1e-9:
-            angle = math.acos(max(-1.0, min(1.0, dot)))
-            rot_axis = [rx/rl, ry/rl, rz/rl]
-            tmp_id, _, _, _, _ = save_mesh(cyl_verts, cyl_fi0, cyl_fi1, cyl_fi2, repair=False)
-            tmp_obj = get_mesh_path(tmp_id, ext="obj")
-            hgp_py.HGP_Rotation_Obj(tmp_obj, angle, rot_axis)
-            cyl_verts, cyl_fi0, cyl_fi1, cyl_fi2 = _load_mesh_from_obj(tmp_obj)
+    dot = max(-1.0, min(1.0, dot))  # 数值钳位防止 acos 域错误
 
-    # ── 3. 平移到拾取点 ──
+    if abs(dot - 1.0) > 1e-6:   # normal 不是 +Z，需要旋转
+        if abs(dot + 1.0) < 1e-6:
+            # ── 特殊情况：normal = [0,0,-1]，与 Z 轴完全反向 ──
+            # 叉积为零，任取垂直轴（X 轴）旋转 180°
+            rot_axis = [1.0, 0.0, 0.0]
+            angle = math.pi   # 弧度制，180°
+        else:
+            # ── 一般情况：叉积求旋转轴 ──
+            rx = z_axis[1]*az - z_axis[2]*ay
+            ry = z_axis[2]*ax - z_axis[0]*az
+            rz = z_axis[0]*ay - z_axis[1]*ax
+            rl = math.sqrt(rx*rx + ry*ry + rz*rz)
+            rot_axis = [rx/rl, ry/rl, rz/rl]
+            angle = math.acos(dot)   # 弧度制
+
+        tmp_id, _, _, _, _ = save_mesh(cyl_verts, cyl_fi0, cyl_fi1, cyl_fi2, repair=False)
+        tmp_obj = get_mesh_path(tmp_id, ext="obj")
+        hgp_py.HGP_Rotation_Obj(tmp_obj, angle, rot_axis)
+        cyl_verts, cyl_fi0, cyl_fi1, cyl_fi2 = _load_mesh_from_obj(tmp_obj)
+
     cx, cy, cz = center
     cyl_verts = [[v[0]+cx, v[1]+cy, v[2]+cz] for v in cyl_verts]
 
