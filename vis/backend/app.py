@@ -723,7 +723,7 @@ def csg_hole(req: CSGHoleRequest):
     diag = math.sqrt(dx*dx + dy*dy + dz*dz)
 
     # ── 出射侧：无条件延伸至 diag ─────────────────
-    outward_ext = diag
+    outward_ext = diag*0.01
 
     # ── 入射侧：射线检测通孔/盲孔 ────────────────
     EPS_OFFSET = max(diag * 0.005, 1e-4)
@@ -747,7 +747,8 @@ def csg_hole(req: CSGHoleRequest):
             thickness = EPS_OFFSET + dist
 
     if thickness is not None and req.depth >= thickness:
-        inward_ext = diag
+        small_eps = min(diag * 0.001, thickness * 0.05)
+        inward_ext = req.depth + small_eps
         print(f"[csg_hole] 通孔: depth={req.depth:.4f} >= thickness={thickness:.4f}")
     else:
         inward_ext = req.depth
