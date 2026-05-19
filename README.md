@@ -1,258 +1,158 @@
-<div align="center">
-
 # LibHGP
 
-**多语言几何算法库 | Multi-Language Geometry Processing Library**
-
-![C++17](https://img.shields.io/badge/C++-17-blue?logo=cplusplus)
-![Python](https://img.shields.io/badge/Python-3.8+-yellow?logo=python)
-![pybind11](https://img.shields.io/badge/pybind11-%E2%9C%93-green)
-![CMake](https://img.shields.io/badge/CMake-3.16+-red?logo=cmake)
-![CGAL](https://img.shields.io/badge/CGAL-%E2%9C%93-blue)
-![Platform](https://img.shields.io/badge/Platform-Windows%20%7C%20Linux-lightgrey)
-
-> 针对实验室既有几何算法实现（liblgp / libhgp）代码零散、接口混乱且缺乏 Python 调用与可视化支持的问题，  
-> 本项目对底层算法库进行工程化整合与接口重构，构建支持 **C++ / Python / Web** 三种调用形态的几何算法库。
-
-</div>
-
----
-
-## 目录
-
-- 项目简介
-- 核心特性
-- 系统架构
-- 仓库目录概览
-- 依赖与环境
-- 构建（Linux / Windows）
-- Python 扩展（hgp_py）说明与示例
-- 常见配置选项
-- 发布与运行时注意事项
-- 开发计划
-- 贡献
-- 许可证
-
----
+针对实验室既有几何算法实现（liblgp/libhgp）代码零散、接口混乱且缺乏 Python 调用与可视化支持的问题，本项目对底层几何算法库进行工程化整合与接口重构，目标是构建支持 **C++ / Python / Web** 三种调用形态的几何算法库。
 
 ## 项目简介
 
-LibHGP（Library for HGP / LGP）是将实验室历史遗留的两套几何算法库（liblgp / libhgp）进行工程化整合与接口重构后的产物。目标是：
+LibHGP 是一个面向几何处理与计算几何场景的基础算法库，重点解决以下问题：
 
-- 统一算法实现并维护单一 API 边界；
-- 同时提供动态库与静态库以满足不同部署需求；
-- 提供 pybind11 封装以供 Python 调用；
-- 提供基于 FastAPI 的 Web 服务和基于 Three.js 的前端可视化（后续模块）；
-- 形成跨平台（Windows / Linux）的一致构建与发布流程。
+- 既有算法代码分散，难以统一维护
+- 接口风格不一致，调用成本高
+- 缺少面向 Python 的便捷绑定
+- 缺少适用于展示、交互与可视化的 Web 支持
 
----
+本仓库希望通过统一工程结构、规范接口设计以及多语言封装能力，提升几何算法的复用性、可维护性与可扩展性。
 
-## 核心特性
+## 项目目标
 
-- 整合 libhgp / liblgp，设计 API 边界层以解决跨模块 ABI 兼容问题
-- 构建动态库 `libhgp` 与静态库 `libhgp_static`
-- 为静态库启用 PIC（POSITION_INDEPENDENT_CODE），便于静态链接跨平台使用
-- 基于 pybind11 封装 `hgp_py` Python 扩展（���目中封装约 147 个 2D/3D 算法接口）
-- 使用统一的 CMake 构建体系，支持 MSVC（Windows）与 GCC/Clang（Linux）
-- 通过 vcpkg 管理第三方依赖（推荐用于 Windows 与一致的依赖管理）
-- 统一 MSVC 运行时（/MD 或 /MDd）以保证运行时一致性（与 vcpkg triplet 保持兼容）
+- 整合实验室已有的几何算法实现
+- 重构并统一底层接口设计
+- 提供稳定清晰的 C++ API
+- 提供 Python 调用接口，便于科研与原型验证
+- 提供面向 Web 的调用与可视化支持
+- 建立更规范的工程组织、构建流程与使用文档
 
----
+## 功能规划
 
-## 系统架构（简要）
+当前从仓库信息可以明确的是，项目以 **C++** 为主，辅以少量 **C** 代码，整体定位为底层几何算法库。结合项目描述，建议 README 将功能范围概括为：
 
-调用层：
-- C++ 客户端（libhgp）
-- Python（hgp_py）
-- Web（FastAPI 后端 + Three.js 前端，后续）
+- 几何基础数据结构与算法封装
+- 统一的算法调用接口
+- 多语言绑定支持（C++ / Python / Web）
+- 可视化与交互扩展接口
+- 面向研究与工程场景的模块化组织
 
-中间层：
-- API 边界、类型转换（pybind11）、ABI 适配
+> 如果仓库后续补充了具体算法模块（如网格处理、曲线曲面、布尔运算、参数化、重建等），可以在此处进一步细化。
 
-核心层：
-- 算法实现：hgp2d, hgp3d, hgpmesh, hull3D, kdtree, cgal 等
-- 第三方：CGAL、Clipper 等
+## 技术栈
 
-数据/展示层：
-- Model（几何数据结构）
-- Visualizer（前端 Three.js 渲染 / 可视化工具）
+- **主要语言**：C++
+- **辅助语言**：C
+- **目标支持形态**：C++ / Python / Web
+- **适用方向**：几何处理、计算几何、科研原型验证、算法集成与可视化展示
 
----
+## 仓库结构
 
-## 仓库目录（概览）
+目前尚未根据实际目录结构展开说明，建议在仓库结构稳定后补充，例如：
 
-```
+```text
 LibHGP/
-├── CMakeLists.txt
-├── libhgp.h
-├── hgp2d.cpp
-├── hgp3d.cpp
-├── hgpio.cpp
-├── hgpmesh.cpp
-├── hull3D.cpp
-├── hull3D.h
-├── kdtree.cpp
-├── kdtree.h             
-├── lgp_api.cpp               # libhgp部分导出函数封装
-├── hgp_py.cpp                # pybind11 绑定（hgp_py 模块）
-├── clipper/                  # Clipper 库文件
-├── local_libs/               # 本地头文件或第三方轻量依赖
-├── build/                    # 构建目录
-├── out/                      # 构建输出目录（动态库等）
-├── out_libhgp/               # 客户端头文件
-├── images/                   # 文档图片资源
-└── README.md
+├── include/        # 对外头文件
+├── src/            # 核心源码实现
+├── bindings/       # Python / Web 绑定层
+├── examples/       # 示例代码
+├── tests/          # 测试代码
+└── docs/           # 项目文档
+```
 
+## 构建与安装
 
-## 依赖与环境
+由于当前未提供具体构建说明，下面给出一个适用于 C++ 项目的推荐模板，可根据实际情况调整。
 
-- CMake >= 3.16  （CMakeLists 中使用 3.16）
-- C++17 支持（CMAKE_CXX_STANDARD 17）
-- 编译器：
-  - Windows: MSVC 2019 / 2022（Visual Studio 2019/2022）
-  - Linux: GCC 9+ / Clang 等
-- 第三方库：
-  - CGAL（配置为 REQUIRED，使用 CGAL::CGAL 和 CGAL::CGAL_Core）
-  - pybind11（用于 Python 绑定）
-  - Clipper（已内置或放在 clipper/）
-- Python >= 3.8（构建/使用 Python 扩展时）
-- vcpkg（推荐在 Windows 上使用以统一依赖管理）
+### 方式一：使用 CMake 构建
 
-vcpkg 示例：
-- Windows:
-  vcpkg install cgal[core] --triplet x64-windows-static-md
-  vcpkg install pybind11 --triplet x64-windows-static-md
-- Linux:
-  vcpkg install cgal[core]
-
----
-
-## 构建说明
-
-本项目使用 CMake 管理构建。CMakeLists.txt 已包含如下约定（摘要）：
-
-- cmake_minimum_required(VERSION 3.16)
-- MSVC 平台上显式设置运行时为 MultiThreadedDLL（/MD）或 MultiThreadedDebugDLL（/MDd）
-- 两个库目标：libhgp (SHARED) 与 libhgp_static (STATIC)
-- 为静态库设置 POSITION_INDEPENDENT_CODE ON
-- 可选构建项 BUILD_PYTHON_BINDINGS（默认 ON），查找 pybind11 并生成 hgp_py 模块
-
-下面给出常见平台的构建步骤。
-
-### Linux（建议在拥有 CGAL 等依赖的环境）
 ```bash
-git clone https://github.com/xinyi-0509/LibHGP.git
-cd LibHGP
-mkdir build && cd build
-
-cmake .. \
-  -DCMAKE_BUILD_TYPE=Release \
-  -DCMAKE_TOOLCHAIN_FILE=/path/to/vcpkg/scripts/buildsystems/vcpkg.cmake
-
-cmake --build . --config Release
+mkdir -p build
+cd build
+cmake ..
+cmake --build . -j
 ```
 
-### Windows（MSVC，使用 vcpkg）
-```powershell
-git clone https://github.com/xinyi-0509/LibHGP.git
-cd LibHGP
-mkdir build; cd build
+### 方式二：安装为开发依赖
 
-cmake .. `
-  -G "Visual Studio 17 2022" -A x64 `
-  -DCMAKE_TOOLCHAIN_FILE="C:/path/to/vcpkg/scripts/buildsystems/vcpkg.cmake" `
-  -DVCPKG_TARGET_TRIPLET="x64-windows-static-md"
+如果后续提供 Python 绑定，可考虑补充例如：
 
-cmake --build . --config Release
-```
-
-### 仅构建/禁用 Python 绑定
-默认会构建 Python 绑定（BUILD_PYTHON_BINDINGS=ON）。若希望禁用：
 ```bash
-cmake .. -DBUILD_PYTHON_BINDINGS=OFF
-cmake --build .
+pip install .
 ```
 
----
+## 使用示例
 
-## Python 扩展（hgp_py）说明
+### C++
 
-- 构建选项：BUILD_PYTHON_BINDINGS（ON/OFF）
-- CMake 会调用 find_package(pybind11 CONFIG REQUIRED) 并通过 pybind11_add_module(...) 生成 `hgp_py` 模块
-- `hgp_py` 链接到静态库 `libhgp_static`（静态链接可以实现自包含分发）
-- 推荐在构建环境中使用与目标 Python 一致的解释器与 pybind11（通过 vcpkg 或系统包安装）
+```cpp
+#include <iostream>
 
-示例 Python 使用（示例函数名需根据实际绑定调整）：
+int main() {
+    std::cout << "LibHGP example" << std::endl;
+    return 0;
+}
+```
+
+### Python
+
+如果仓库后续提供 Python 绑定，可补充如下示例：
+
 ```python
-import hgp_py
+import libhgp
 
-# 假设绑定中存在 Point2D, distance 等接口
-p1 = hgp_py.Point2D(0.0, 0.0)
-p2 = hgp_py.Point2D(3.0, 4.0)
-print("distance:", hgp_py.distance(p1, p2))
+print("LibHGP Python binding example")
 ```
 
-部署注意：
-- Windows 下如果使用静态链接（libhgp_static）并将其编译进 hgp_py，则通常不需要额外的 DLL；若使用动态库 libhgp，则需要同时部署 libhgp.dll。
-- Linux 下遵循常规 .so 部署与 LD_LIBRARY_PATH／rpath 配置。
+### Web
 
----
+如果后续提供 Web 接口或可视化页面，可补充：
 
-## 常见配置与源码要点（根据当前 CMakeLists.txt）
+- WebAssembly 调用示例
+- JavaScript / TypeScript 封装示例
+- 可视化演示页面地址
 
-- 强制 CMake policy CMP0091 在 project() 之前设置以控制 MSVC 运行时行为：
-  cmake_policy(SET CMP0091 NEW)
-- MSVC 运行时： set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>DLL")
-- 默认启用本地库路径（local_libs）作为 PRIVATE include
-- 使用 find_package(CGAL REQUIRED COMPONENTS Core)，并将 CGAL::CGAL、CGAL::CGAL_Core 链接到目标
-- pybind11 通过 CONFIG 模式查找并生成模块 hgp_py（pybind11_add_module）
-- 静态库 libhgp_static 设置 POSITION_INDEPENDENT_CODE ON 以便安全地与共享对象链接
+## 适用场景
 
----
+- 实验室既有几何算法资产整合
+- 几何算法的统一接口封装
+- 面向 Python 的科研实验与快速验证
+- 面向 Web 的教学展示、交互演示与可视化应用
+- 面向后续工程系统的底层算法支撑
 
-## 发布与运行时注意事项
+## 开发计划建议
 
-- 构建时请确认使用的 vcpkg triplet 与运行时选项一致（特别是 Windows MSVC 的 /MD vs /MT）
-- 若打算发布 Python wheel，请先确保 hgp_py 对应平台的运行时依赖都已静态或打包好
-- 推荐使用 CI（例如 GitHub Actions）自动化构建并对 Linux/Windows 提供二进制发布包
+- [ ] 整理并迁移已有算法模块
+- [ ] 统一命名规范与接口风格
+- [ ] 建立标准构建系统
+- [ ] 增加单元测试与回归测试
+- [ ] 完善 Python 绑定
+- [ ] 完善 Web 支持与可视化演示
+- [ ] 补充示例、文档与 benchmark
 
----
+## 贡献方式
 
-## 开发计划（Roadmap）
+欢迎围绕以下方向参与贡献：
 
-短期（已完成项）：
-- libhgp / liblgp 整合与 API 边界层（已完成）
-- CMake 跨平台构建体系（已完成）
-- pybind11 Python 扩展（约 147 个接口，已完成）
-- Clipper、CGAL、KD 树、凸包等模块整合（已完成）
+- 新增或整理几何算法模块
+- 改进接口设计与工程结构
+- 补充测试与示例
+- 增强 Python / Web 支持
+- 完善文档与可视化演示
 
-中期 / 长期（待办）：
-- 完善单元测试与持续集成
-- 补全并公开 API 文档（Doxygen / Sphinx）
-- 提供 FastAPI 后端与 Three.js 前端的演示与部署脚本
-- 发布 PyPI / 二进制 Release（Windows .pyd / Linux .so）
-- 探索 WebAssembly 调用形态（Emscripten / WASM）
+如需协作开发，建议通过 Issue / Pull Request 的方式提交问题与改进建议。
 
----
+## License
 
-## 贡献
+当前仓库未提供明确许可证信息，建议补充 `LICENSE` 文件并在此注明，例如：
 
-欢迎提交 issue 或 PR。建议在贡献前先打开 Issue 讨论设计或改动点，或创建分支按功能/修复命名（例如 feature/pybind-cleanup 或 fix/cmake-runtime）。
+- MIT
+- BSD-3-Clause
+- Apache-2.0
+- 或实验室内部使用协议
 
-贡献流程概览：
-1. Fork 仓库
-2. 新建分支并实现变更
-3. 提交 PR，描述变更内容与测试情况
-4. 等待 review 与合并
+## 联系与说明
 
----
+本项目聚焦于将实验室内部既有几何算法库进行系统化整理与工程化升级。如果你希望将该 README 进一步完善为“可直接对外展示”的版本，下一步建议补充以下内容：
 
-## 许可证
-
-本项目使用 MIT 许可证（LICENSE 文件中说明）。如需其他许可或有合作事宜，请联系仓库维护者。
-
----
-
-<div align="center">
-  Made with ❤️ | 2025.02 – 2025.07
-</div>
+1. 实际目录结构
+2. 依赖环境
+3. 具体算法模块列表
+4. 构建方式
+5. C++ / Python / Web 的最小可运行示例
+6. 许可证与维护者信息
