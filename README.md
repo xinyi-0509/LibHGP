@@ -2,77 +2,69 @@
 
 # LibHGP
 
-**面向数字制造的微型几何引擎**
+**A Lightweight Geometry Engine for Digital Manufacturing**
 
-<!-- 可选：状态徽章 -->
-![Language](https://img.shields.io/badge/language-C%2B%2B-blue)
-![Build](https://img.shields.io/badge/build-CMake-brightgreen)
-![Python](https://img.shields.io/badge/python-binding-yellow)
-![Platform](https://img.shields.io/badge/platform-Windows%20%7C%20Linux-lightgrey)
-
-面向实验室几何算法资产整合与工程化重构的基础算法库，支持 **C++ / Python / Web** 三种调用形态。
+A foundational algorithm library for integrating and industrializing laboratory geometric algorithm assets, supporting **C++ / Python / Web** three calling interfaces.
 
 </div>
 
-## 目录
+## Table of Contents
 
-- [简介](#简介)
-- [技术架构](#技术架构)
-- [推荐环境](#推荐环境)
-- [快速开始](#快速开始)
-- [许可证](#许可证)
+- [Introduction](#introduction)
+- [Architecture](#architecture)
+- [Recommended Environment](#recommended-environment)
+- [Quick Start](#quick-start)
+- [License](#license)
 
-## 简介
+## Introduction
 
-LibHGP 是一个面向几何处理与计算几何场景的基础算法库，并以此为基础构建了一个具备良好可维护性、可扩展性与可复用性的交互式可视化平台，支持以下三类使用方式：
+LibHGP is a geometry processing and computational geometry algorithm library that serves as the foundation for building an interactive visualization platform with good maintainability, scalability, and reusability. It supports three usage modes:
 
-- **C++ 原生调用**：适合高性能算法开发与系统集成
-- **Python 调用**：适合科研实验、原型验证与教学使用
-- **Web 调用**：适合前端展示、交互式可视化与在线演示
+- **C++ Native Calls**: Suitable for high-performance algorithm development and system integration
+- **Python Calls**: Suitable for research experiments, prototyping, and teaching
+- **Web Calls**: Suitable for frontend display, interactive visualization, and online demonstrations
 
+## Architecture
 
-## 技术架构
+The project can be divided into the following layers:
 
-项目整体可以分为以下几个层次：
+### 1. Core Algorithm Layer
+Responsible for implementing geometry processing, computational geometry, and related fundamental algorithm modules, including:
 
-### 1. 核心算法层
-负责实现几何处理、计算几何及相关基础算法模块，例如：
+- 2D geometry algorithms
+- 3D geometry algorithms
+- Mesh processing
+- Convex hull and spatial indexing
+- Other laboratory-accumulated algorithm modules
 
-- 2D 几何算法
-- 3D 几何算法
-- 网格处理
-- 凸包与空间索引
-- 其他实验室积累的算法模块
+### 2. Interface Wrapper Layer
+Responsible for providing unified wrappers for underlying algorithms, exposing stable and consistent calling interfaces, including:
 
-### 2. 接口封装层
-负责对底层算法进行统一封装，对外提供稳定一致的调用接口，包括：
+- C++ native interface
+- Python binding interface (e.g., pybind11)
+- Web calling interface (can support FastAPI / WebAssembly in the future)
 
-- C++ 原生接口
-- Python 绑定接口（如 pybind11）
-- Web 调用接口（后续可支持 FastAPI / WebAssembly 等）
+### 3. Application and Presentation Layer
+Targeting specific application scenarios, including:
 
-### 3. 应用与展示层
-面向具体应用场景，包括：
+- Research prototyping
+- Teaching demonstrations
+- Algorithm visualization
+- Web-based interactive display
 
-- 科研原型验证
-- 教学演示
-- 算法可视化
-- Web 端交互展示
-
-## 推荐环境
+## Recommended Environment
 - C++17 
 - Visual Studio 2019
 
-## 快速开始
+## Quick Start
 
+### C++ Users
 
-### C++ 用户
-
-1. 将 libhgp/C++/ 中的所有文件复制进您的项目目录
-2. 声明头文件 `#include"libhgp.h"`
-3. 声明命名空间 `using namespace libhgp;`
-4. 使用以下代码快速测试：
-'''cpp
+1. Copy all files from `libhgp/C++/` into your project directory
+2. Include the header file: `#include "libhgp.h"`
+3. Declare the namespace: `using namespace libhgp;`
+4. Use the following code for a quick test:
+```cpp
 #include "iostream"
 #include"libhgp.h"
 using namespace std;
@@ -90,13 +82,13 @@ int main(int argc, char* argv[])
 	system("pause");
 	return 0;
 }
+```
+### Python Users
 
-### Python 用户
-
-1. 将 libhgp/Python/ 中的所有文件复制进您的项目目录
-2. 在 Python 中导入模块 'import hgp_py'
-3. 使用以下代码快速测试：
-"
+1. Copy all files from `libhgp/Python/` into your project directory
+2. Import the module in Python: `import hgp_py`
+3. Use the following code for a quick test:
+```python
 import hgp_py
 
 # ── Test 1: 2D point-to-point distance ──────────────────────────────
@@ -138,14 +130,14 @@ print(f"[PASS] Test 6: 3D point distance (0,0,0) (1,1,1) \n HGP_3D_Distance_Poin
 
 print("\n✅ All tests passed.")
 "
+```
+### Web Users
 
-### Web 用户
+1. Copy all files from `libhgp/Web/` into your project directory
+2. Navigate to the server build directory: `cd backend`
+3. Start the local server: `python -m uvicorn app:app --reload --port 8000`
+4. Access the local server at: `http://127.0.0.1:8000/`
 
-1. 将 libhgp/Web/ 中的所有文件复制进您的项目目录
-2. 进入服务器构建目录 'cd backend'
-3. 启动本地服务器 'python -m uvicorn app:app --reload --port 8000'
-4. 访问本地服务器 http://127.0.0.1:8000/
-
-# License
+## License
 
 All rights about the program are reserved by the authors of this project. The programs can only be used for research purpose. In no event shall the author be liable to any party for direct, indirect, special, inc
