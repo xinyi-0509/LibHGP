@@ -70,22 +70,22 @@ PYBIND11_MODULE(hgp_py, m) {
 }
 ```
 
-绑定覆盖的函数类别如下表所示：
+按当前仓库实现（`main`）统计，LibLGP 与 LibHGP 的能力边界可概括为：
 
-| 类别 | 函数数量 | 代表函数 |
-|------|:-------:|---------|
-| IO | 2 | `HGP_Vector_Base`、`HGP_Test_PGL` |
-| 2D 距离计算 | 8 | `HGP_2D_Distance_Point_Point`、`HGP_2D_Distance_Polygon_Polygon`、`HGP_2D_Distance_Point_Polygons` |
-| 2D 位置判断 | 2 | `HGP_2D_Location_Point_Polygon`、`HGP_2D_Location_Points_Polygon` |
-| 2D 采样 | 7 | `HGP_2D_Polygon_Dart_Sampling`、`HGP_2D_Polygon_Regular_Sampling_C1/C2/C3`、`HGP_2D_Square_Regular_Sampling_C1/C2/C3` |
-| 2D 求交 | 6 | `HGP_2D_Intersection_Segment_Segment`、`HGP_2D_Intersection_Line_Line`、`HGP_2D_Intersection_Segment_Polygon`、`HGP_2D_Intersection_Polygon_Polygon` |
-| 2D 多边形操作 | 33 | `HGP_2D_Polygon_Area`、`HGP_2D_Detect_Polygon_Inside_C1~C5`、`HGP_2D_Convex_Hulls`、`HGP_2D_OBB_Box`、`HGP_2D_Polygon_Triangulation_C1/C2/C3` |
-| 3D 距离计算 | 6 | `HGP_3D_Distance_Point_Point`、`HGP_3D_Distance_Point_Plane`、`HGP_3D_Distance_Segment_Segment` |
-| 3D 投影与平面 | 15 | `HGP_3D_Plane_Fitting`、`HGP_3D_Projection_Point_Plane_C1/C2`、`HGP_3D_Plane_3D_to_2D_Points` |
-| 3D 求交 | 4 | `HGP_3D_Intersection_Segment_Plane`、`HGP_3D_Intersection_Line_Plane`、`HGP_3D_Intersection_Segment_Segment` |
-| 3D 其他 | 2 | `HGP_Face_Normal`、`HGP_3D_One_Triangle_Area` |
-| 网格操作（HGPMESH） | 62 | `HGP_3D_Intersection_Ray_Mesh`、`HGP_3D_Mesh_Curvature_C1~C6`、`HGP_Shortest_Geodesic_Path_C1/C3/C4`、`HGP_Cut_Surface` |
-| **合计** | **147** | |
+| 模块 | 当前可见能力（仓库事实） | 对 PPT 的准确表述建议 |
+|------|--------------------------|----------------------|
+| LibLGP（工具层） | 在 `libhgp.h` 中以 `LGP_*` 形式导出 **9** 个工具接口（统计、字符串、Windows 实用函数），实现位于 `lgp_api.cpp` | “LibLGP 以基础工具能力为主，原先与几何算法能力分散维护。” |
+| LibHGP（几何算法层） | 在 `libhgp.h` 中导出 **182** 个 `HGP_*` 接口（2D/3D 几何、网格、CSG 等核心能力） | “LibHGP 承担核心几何算法能力，是系统统一对外能力主体。” |
+| Python 扩展（`hgp_py`） | `hgp_py.cpp` 当前绑定 **182** 个 `HGP_*` 接口，未直接暴露 `LGP_*` | “Python 侧已打通核心几何算法调用链路。” |
+| Web 可视化（`vis/backend`） | FastAPI 后端提供 **24** 个 `/api/*` 算法路由（另含 `/`、`/favicon.ico` 两个静态路由） | “Web 侧已具备交互验证与典型算法服务化能力。” |
+
+> 建议在答辩“研究背景”页开场使用：  
+> “实验室长期积累了较丰富的底层几何算法资源（LibLGP 与 LibHGP），但早期能力分散在不同代码形态中，统一接口与跨层调用链路仍不足，导致复用与验证成本较高。”
+
+> 建议在下一页“研究目标”中使用三条短句：  
+> 1) “统一 LibLGP/LibHGP 能力边界，形成可维护的单一对外接口体系”；  
+> 2) “构建 pybind11 扩展，打通 C++ → Python 调用链路”；  
+> 3) “补齐 Web 可视化与交互验证能力，支撑场景化演示与应用验证”。
 
 ---
 
